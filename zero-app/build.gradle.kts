@@ -13,9 +13,6 @@ fun enabled(flag: String): Boolean =
 dependencies {
     implementation(project(":zero-core"))
     implementation(project(":zero-system"))
-    if (enabled("withExample")) {
-        runtimeOnly(project(":modules:example"))
-    }
     if (enabled("withSearch")) {
         runtimeOnly(project(":zero-core")) {
             capabilities { requireCapability("dev.zerokotlin:zero-core-elasticsearch") }

@@ -85,14 +85,14 @@
 
 ## 业务模块注册
 
-可选模块声明 `ModuleMigration("example")` Bean，并在 `src/main/resources/db/modules/example/V1__example.sql` 中提供迁移。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
+可选模块声明 `ModuleMigration("orders")` Bean，并在 `src/main/resources/db/modules/orders/V1__orders.sql` 中提供迁移。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
 
 ```sql
 INSERT INTO sys_permission (code, name)
-VALUES ('example:note:read', '查看示例笔记');
+VALUES ('orders:order:read', '查看订单');
 
 INSERT INTO sys_menu (id, module_name, name, path, permission_code, sort_order)
-VALUES ('example-notes', 'example', '示例笔记', '/example/notes', 'example:note:read', 100);
+VALUES ('orders-list', 'orders', '订单列表', '/orders', 'orders:order:read', 100);
 ```
 
 | 表 | 字段契约 |
@@ -101,4 +101,4 @@ VALUES ('example-notes', 'example', '示例笔记', '/example/notes', 'example:n
 | `sys_menu` | `id` 为字符串主键，最长 36 字符。必填 `name`。可空 `module_name` 对应可选模块名称，模块移除后导航自动隐藏其菜单。可空 `parent_id`、`path`、`permission_code`，分别关联父菜单、站内路径和权限点。`sort_order` 默认 0，`enabled` 默认 1。 |
 | `sys_role_permission` | 复合主键 `(role_id, permission_code)`，关联已有角色、权限点。业务角色的授予关系也可通过系统 API 配置。 |
 
-服务方法使用 `@PreAuthorize("hasAuthority('example:note:read')")` 鉴权，注入 `dev.zerokotlin.core.CurrentActor` 并调用 `requireUserId()` 获取登录用户。业务模块按自己的实体所有权和组织关系约束查询。在业务模块的 `@Transactional` 写方法中调用 `dev.zerokotlin.core.OperationAudit.record(permission, targetId)`，系统会在当前事务内复核权限并记录操作。业务写入失败时审计一同回滚。
+服务方法使用 `@PreAuthorize("hasAuthority('orders:order:read')")` 鉴权，注入 `dev.zerokotlin.core.CurrentActor` 并调用 `requireUserId()` 获取登录用户。业务模块按自己的实体所有权和组织关系约束查询。在业务模块的 `@Transactional` 写方法中调用 `dev.zerokotlin.core.OperationAudit.record(permission, targetId)`，系统会在当前事务内复核权限并记录操作。业务写入失败时审计一同回滚。

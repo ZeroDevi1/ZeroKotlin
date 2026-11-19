@@ -37,7 +37,6 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 | --- | --- |
 | zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。JPA、Elasticsearch、Kafka 由同一项目的 Gradle feature 提供。 |
 | zero-system | 账号、角色、权限、部门、菜单、字典、令牌会话和审计 |
-| modules/example | 可移除的业务模块示例 |
 | zero-app | 应用启动与模块装配 |
 
 ## 配置与二次开发

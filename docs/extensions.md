@@ -4,12 +4,11 @@
 
 | 构建属性 | JVM 应用内容 | 运行开关 |
 | --- | --- | --- |
-| `-PwithExample=true` | JPA 笔记示例、迁移及其所需的 JPA feature | 随包启用 |
 | `-PwithSearch=true` | Elasticsearch 客户端及示例接口 | `zero.search.enabled`，默认 `false` |
 | `-PwithKafka=true` | Kafka 客户端及示例接口 | `zero.kafka.enabled`，默认 `false` |
 
 ```bash
-./gradlew :zero-app:bootJar -PwithExample=true -PwithSearch=true -PwithKafka=true
+./gradlew :zero-app:bootJar -PwithSearch=true -PwithKafka=true
 ```
 
 Elasticsearch 和 Kafka feature 的运行开关同时控制客户端、接口和健康贡献器。`zero-system` 随对应 feature 启用而注册权限种子迁移。JVM 应用需要在打包时选择 feature，并在启动时打开对应的配置才能启用。以下请求使用通过系统登录获取的 Bearer Token，示例假设 `TOKEN` 已设为当前访问令牌。[系统登录](system.md)
@@ -80,28 +79,6 @@ curl -X POST http://localhost:8080/api/extensions/kafka/consume \
 
 [KafkaConsumer 轮询与提交偏移说明](https://kafka.apache.org/42/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html)
 
-## JPA 笔记示例
-
-`modules/example` 选择 `zero-core-jpa` feature，与系统的 MyBatis Mapper 共享同一个 DataSource。Flyway 迁移 `db/modules/example/V1__example.sql` 创建 `example_note`，注册权限和菜单。菜单路径为 `/example/notes`，菜单 ID 为 `example-notes`，进入菜单需要 `example:note:read`。
-
-| 接口 | 权限 | 结果 |
-| --- | --- | --- |
-| `POST /api/example/notes` | `example:note:create` | 创建笔记，返回 201 和 Location |
-| `GET /api/example/notes?page=1&size=20` | `example:note:read` | 按创建时间和 ID 倒序分页 |
-| `GET /api/example/notes/{id}` | `example:note:read` | 查询自己的一条笔记 |
-
-启用后，系统管理员即可调用这些接口，也可将所需权限分配给普通角色。查看接口始终按当前用户 ID 过滤。
-
-```bash
-curl -X POST http://localhost:8080/api/example/notes \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"title":"第一条笔记","content":"JPA 与审计共享数据源"}'
-
-curl http://localhost:8080/api/example/notes -H "Authorization: Bearer $TOKEN"
-```
-
-创建笔记在同一事务中通过系统写入契约复核权限、保存实体并登记 `example:note:create` 操作审计。审计保存操作人、笔记 ID 和时间，可通过 `GET /api/system/audits/operations` 查看。
-
 ## 添加或移除自己的模块
 
 1. 在 `settings.gradle.kts` 包含新子项目，并在启动模块增加该项目的依赖或构建开关。
@@ -124,6 +101,4 @@ dependencies {
 
 装配业务模块时，这些 feature 随依赖进入应用包。注入 `ElasticsearchDocuments` 或 `KafkaMessages` 的组件应使用对应的 `zero.search.enabled` 或 `zero.kafka.enabled` 条件，以便在关闭中间件时启动。Gradle 会同时引入 `zero-core` 主变体。[Gradle feature 变体](https://docs.gradle.org/current/userguide/how_to_create_feature_variants_of_a_library.html)
 
-省略 `-PwithExample=true` 后重新打包，可在原数据库上运行核心应用。菜单会从用户导航中隐藏，笔记数据和独立历史表 `zero_history_example` 保留。重新启用模块时会继续执行尚未应用的迁移。
-
-如需从源码树移除示例，移除 `settings.gradle.kts` 中的 `modules:example` 和 `zero-app/build.gradle.kts` 中对应的依赖分支，再删除 `modules/example`。
+卸载业务模块时，从启动工程移除其依赖。该模块的菜单会从用户导航中隐藏，模块数据和独立迁移历史保留。以后重新装配同名模块时，Flyway 会从已记录版本继续迁移。
