@@ -3,8 +3,8 @@ package dev.zerokotlin.system.service
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
-import dev.zerokotlin.core.storage.FileStorageBackend
-import dev.zerokotlin.core.storage.FileStorages
+import dev.zerokotlin.core.FileStorageBackend
+import dev.zerokotlin.core.FileStorages
 import dev.zerokotlin.system.dto.FileEntry
 import dev.zerokotlin.system.entity.FileRecord
 import dev.zerokotlin.system.entity.FileState

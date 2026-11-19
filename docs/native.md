@@ -19,6 +19,7 @@ Gradle 为 `processAot` 指定 SQLite 和 Caffeine。处理器在构建时准备
 - MyBatis-Plus Boot 4 starter 提供 Native Image 与 Spring AOT 集成。构建期扫描 `@Mapper` Bean，并为 MyBatis 代理以及从 Mapper 方法签名可达的模型生成反射信息。
 - `zero-core` 登记默认配置、`mapper/**` 和 Flyway 迁移资源，保留运行期读取的配置、SQL 和 XML。`zero-system` 为系统 Mapper 的实体和查询对象登记反射提示。XML 若引用无法从 Mapper 签名推导的类，应为这些类补充反射提示。
 - SQLite JDBC 使用驱动自带的 GraalVM Feature。Spring Boot Flyway 自动配置提供原生镜像中的迁移资源解析。
+- Quartz 的构建信息和系统任务类型已登记资源或反射提示。定时任务恢复、WebSocket 消息、Excel 文件处理、对象存储和离线 IP 查询的原生运行情况仍待实测。
 - Native Build Tools 默认使用 GraalVM 元数据仓库，其中包含 Caffeine 的动态缓存实现元数据。
 
 ## 运行和核对

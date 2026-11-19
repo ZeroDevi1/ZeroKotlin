@@ -1,7 +1,7 @@
 package dev.zerokotlin.system.service
 
-import dev.zerokotlin.core.excel.XlsxColumn
-import dev.zerokotlin.core.excel.XlsxWorkbooks
+import dev.zerokotlin.core.service.XlsxColumn
+import dev.zerokotlin.core.service.XlsxWorkbooks
 import dev.zerokotlin.system.dto.CreateDictionaryRequest
 import dev.zerokotlin.system.dto.CreateUserRequest
 import dev.zerokotlin.system.dto.DictionaryItemRequest

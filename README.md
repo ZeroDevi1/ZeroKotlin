@@ -80,4 +80,4 @@ pnpm dev
 
 Web、JPA、健康端点和 Swagger UI 的通用默认值位于 `zero-core/resources/zero-core-defaults.properties`。部署时可通过应用配置、环境变量或命令行参数覆盖。
 
-工程划分参考 JeecgBoot 将共享基础设施集中到 `jeecg-boot-base-core` 的做法。组织与权限模型参考 JeecgBoot，Kotlin 业务模块划分参考 zeta-kotlin。[JeecgBoot](https://github.com/jeecgboot/JeecgBoot/tree/main/jeecg-boot/jeecg-boot-base-core) · [zeta-kotlin](https://github.com/xia5800/zeta-kotlin)
+工程划分参考 JeecgBoot 将共享基础设施集中到 `jeecg-boot-base-core` 的做法。组织与权限模型参考 JeecgBoot，Kotlin 模块划分参考 zeta-kotlin。文件管理、Excel、实时消息、调度和运维能力参考其多模块版本。[JeecgBoot](https://github.com/jeecgboot/JeecgBoot/tree/main/jeecg-boot/jeecg-boot-base-core) · [zeta-kotlin](https://github.com/xia5800/zeta-kotlin) · [springboot-kotlin-module](https://github.com/xia5800/springboot-kotlin-module/tree/e5e0cc7c2b8a070689560389786228c944bd25a4)

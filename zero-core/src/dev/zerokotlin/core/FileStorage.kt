@@ -1,4 +1,4 @@
-package dev.zerokotlin.core.storage
+package dev.zerokotlin.core
 
 import java.io.IOException
 import java.io.InputStream

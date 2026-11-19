@@ -1,6 +1,6 @@
 package dev.zerokotlin.system.controller
 
-import dev.zerokotlin.core.excel.XLSX_MEDIA_TYPE
+import dev.zerokotlin.core.service.XLSX_MEDIA_TYPE
 import dev.zerokotlin.system.dto.ExcelImportResult
 import dev.zerokotlin.system.security.DICTIONARY_READ
 import dev.zerokotlin.system.security.DICTIONARY_WRITE

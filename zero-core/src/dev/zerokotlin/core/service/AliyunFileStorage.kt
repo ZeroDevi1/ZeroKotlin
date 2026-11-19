@@ -1,5 +1,7 @@
-package dev.zerokotlin.core.storage
+package dev.zerokotlin.core.service
 
+import dev.zerokotlin.core.FileStorage
+import dev.zerokotlin.core.FileStorageBackend
 import com.aliyun.oss.OSS
 import com.aliyun.oss.OSSException
 import com.aliyun.oss.model.ObjectMetadata

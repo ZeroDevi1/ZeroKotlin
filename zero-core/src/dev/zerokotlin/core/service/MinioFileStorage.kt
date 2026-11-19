@@ -1,5 +1,7 @@
-package dev.zerokotlin.core.storage
+package dev.zerokotlin.core.service
 
+import dev.zerokotlin.core.FileStorage
+import dev.zerokotlin.core.FileStorageBackend
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs

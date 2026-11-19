@@ -2,8 +2,8 @@
 
 如果你熟悉 Java 和 Spring，可以从用户列表的调用链开始。它用到了 Kotlin 的空安全、扩展函数、集合变换和构造注入。
 
-1. [SystemUserController.list](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L60) 接收页码、页大小和可选的部门、角色筛选参数。
-2. [SystemUsers.list](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L81) 用当前用户的可见范围和请求的筛选项构造 `UserQuery`，查询当前页，再批量查询本页账号的角色。
+1. [SystemUserController.list](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L63) 接收页码、页大小和可选的部门、角色筛选参数。
+2. [SystemUsers.list](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L99) 用当前用户的可见范围和请求的筛选项构造 `UserQuery`，查询当前页，再批量查询本页账号的角色。
 3. [UserMapper.xml](../zero-system/resources/mapper/system/UserMapper.xml) 让列表和总数查询共用可见范围和筛选条件。服务把查询结果转成 `UserListEntry`，由 `PageWindow.result` 组装 `PageResult<UserListEntry>`。
 
 后端源码放在模块的 `src/` 下，Mapper XML 和迁移 SQL 放在 `resources/`。本手册中的教学示例使用 `zero-system` 和 `zero-core` 的现有类型。Gradle 接入、模块装配和迁移步骤见[新增业务模块](new-module.md)。
@@ -32,9 +32,9 @@ private fun printEnabledUserCount(page: PageResult<UserListEntry>) {
 }
 ```
 
-- `userPageWindow(size = 50)` 用命名实参指定页大小，`page` 取默认值 `1`。真实 HTTP 接口通过 `@RequestParam(defaultValue = "1")` 等注解指定请求默认值。[用户控制器](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L60)
-- `printEnabledUserCount` 的返回类型是 `Unit`，块体可省略显式的 `: Unit`。项目中的 `SystemAnnouncements.publish` 则是 `Unit` 表达式体，它把工作交给 `transition`。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L102)
-- 顶层 `private` 的作用域是当前文件，类成员的 `private` 限于声明它的类。`internal` 对同一个 Kotlin 编译模块（例如 `zero-system` 主源集）可见。新声明的函数默认是 `public`。本项目的 `UserRow.summary()` 是文件私有的扩展函数。[Kotlin 可见性](https://kotlinlang.org/docs/visibility-modifiers.html) · [用户服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L49)
+- `userPageWindow(size = 50)` 用命名实参指定页大小，`page` 取默认值 `1`。真实 HTTP 接口通过 `@RequestParam(defaultValue = "1")` 等注解指定请求默认值。[用户控制器](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L63)
+- `printEnabledUserCount` 的返回类型是 `Unit`，块体可省略显式的 `: Unit`。项目中的 `SystemAnnouncements.publish` 则是 `Unit` 表达式体，它把工作交给 `transition`。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L106)
+- 顶层 `private` 的作用域是当前文件，类成员的 `private` 限于声明它的类。`internal` 对同一个 Kotlin 编译模块（例如 `zero-system` 主源集）可见。新声明的函数默认是 `public`。本项目的 `UserRow.summary()` 是文件私有的扩展函数。[Kotlin 可见性](https://kotlinlang.org/docs/visibility-modifiers.html) · [用户服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L56)
 - 扩展函数按 `fun 接收者类型.名称(...)` 声明，可通过 `page.enabledUserCountText()` 调用。函数内部可通过 `this` 访问接收者。编译器按接收者的静态类型选择扩展，同签名的成员函数优先。[Kotlin 扩展](https://kotlinlang.org/docs/extensions.html)
 
 ## `val`、`var` 与空安全
@@ -52,8 +52,8 @@ private fun departmentLabel(user: UserSummary, departments: Map<String, String>)
 }
 ```
 
-- `?.` 仅在接收者有值时调用。`?.let { ... }` 适合变换可选值。`SystemUsers.updateAccount` 用它处理可选的新密码。[账号更新服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L156)
-- `?:` 在左侧为 `null` 时求右侧的值，右侧也可以提前 `return` 或抛异常。`SystemUsers.visibleUser` 用 `?: missing("用户")` 将空查询结果映射为 HTTP 404。`missing` 返回类型为 `Nothing`，表示该调用必然中断当前执行路径。[用户查询服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L189) · [错误辅助函数](../zero-system/src/dev/zerokotlin/system/support/SystemSupport.kt#L113)
+- `?.` 仅在接收者有值时调用。`?.let { ... }` 适合变换可选值。`SystemUsers.updateAccount` 用它处理可选的新密码。[账号更新服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L240)
+- `?:` 在左侧为 `null` 时求右侧的值，右侧也可以提前 `return` 或抛异常。`SystemUsers.visibleUser` 用 `?: missing("用户")` 将空查询结果映射为 HTTP 404。`missing` 返回类型为 `Nothing`，表示该调用必然中断当前执行路径。[用户查询服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L313) · [错误辅助函数](../zero-system/src/dev/zerokotlin/system/support/SystemSupport.kt#L124)
 - 编译器可以在非空检查后缩窄稳定变量的类型。可变属性先读到局部 `val`，后续在同一次读取的值上做判断和访问。调用 Java Mapper 时，缺少空性标记的返回值可能是平台类型，例如 IDE 显示的 `UserRecord!`。按 Java API 的契约显式处理可能的 `null`，避免用 `!!` 把检查推迟到运行时。[Kotlin 空安全](https://kotlinlang.org/docs/null-safety.html)
 
 ## 用集合函数表达筛选和转换
@@ -99,7 +99,7 @@ private fun rolesInDepartment(
 | `associateBy` | 按键索引，每个键保留最后遇到的值。示例按角色 ID 合并重复角色。 |
 | `groupBy` | 按键保留一组值。可空的部门 ID 会形成 `null` 分组。 |
 
-项目在 `SystemUsers.list` 中先提取本页账号 ID，通过一次查询取回角色，再用 `groupBy(keySelector = ..., valueTransform = ...)` 按账号组装角色 DTO。没有角色的账号通过 `orEmpty()` 得到空列表。涉及可见范围、部门、角色等全量筛选时，在数据库中应用条件，并在总数查询中使用同一条件。当前页在内存里的计算仅覆盖已经选出的记录。[用户服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L81) · [用户查询 SQL](../zero-system/resources/mapper/system/UserMapper.xml#L40) · [Kotlin 集合变换](https://kotlinlang.org/docs/collection-transformations.html)
+项目在 `SystemUsers.list` 中先提取本页账号 ID，通过一次查询取回角色，再用 `groupBy(keySelector = ..., valueTransform = ...)` 按账号组装角色 DTO。没有角色的账号通过 `orEmpty()` 得到空列表。涉及可见范围、部门、角色等全量筛选时，在数据库中应用条件，并在总数查询中使用同一条件。当前页在内存里的计算仅覆盖已经选出的记录。[用户服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L99) · [用户查询 SQL](../zero-system/resources/mapper/system/UserMapper.xml#L40) · [Kotlin 集合变换](https://kotlinlang.org/docs/collection-transformations.html)
 
 `List` 上的这些变换逐步求值，多个变换通常产生中间集合。`Sequence` 的 `filter`、`map` 和 `take` 在终止操作消费时才求值。以下函数可接在同一段教学代码后面，从本页只取前若干个启用账号的显示名。
 
@@ -116,7 +116,7 @@ private fun firstEnabledNames(page: PageResult<UserListEntry>, limit: Int): List
 
 - 简短的分页 DTO 转换可直接使用集合操作。链条较长、数据量大或可以提前结束时，再考虑 `Sequence`。`asSequence()` 基于已加载的本页数据，数据库查询仍由 Mapper 完成。[Kotlin 序列](https://kotlinlang.org/docs/sequences.html)
 - 让筛选和转换 lambda 专注于计算值。序列中的副作用可能延迟到消费时发生，也可能因为 `take` 提前结束而只发生在部分元素上。重复遍历可重复计算。需要写库、发消息或记录日志时，用清晰的调用位置表达执行时机。
-- 有 `break`、`continue`、多步状态更新或逐项错误处理时，普通 `for` 或 `while` 往往更好读。项目里的 `validateParent` 先用 `associateBy` 建立 ID 索引，再用 `while` 沿父节点向上检查缺失和循环。[层级校验](../zero-system/src/dev/zerokotlin/system/support/SystemSupport.kt#L142)
+- 有 `break`、`continue`、多步状态更新或逐项错误处理时，普通 `for` 或 `while` 往往更好读。项目里的 `validateParent` 先用 `associateBy` 建立 ID 索引，再用 `while` 沿父节点向上检查缺失和循环。[层级校验](../zero-system/src/dev/zerokotlin/system/support/SystemSupport.kt#L153)
 
 ## 选择类、枚举或接口
 
@@ -151,11 +151,11 @@ fun orderStatusFromCode(code: String): OrderStatus? =
     OrderStatus.entries.firstOrNull { it.code == code }
 ```
 
-项目把 `AnnouncementStatus` 的 `.name` 写入 `AnnouncementRecord.status`，公告响应也返回这个字符串。`PUBLISHED` 同时出现在收件箱查询里，迁移中的约束则检查状态与发布时间的组合。修改枚举常量名时，先核对已有数据、表约束、查询和 API 调用方，并安排兼容或迁移。新领域需要独立演进时，可以给枚举定义稳定的 `code`，在数据库和 HTTP 边界显式映射。`ordinal` 取决于声明顺序，插入常量或调整顺序可能改变已有常量的序号。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L102) · [公告 API](organization-notices.md#公告管理) · [公告迁移](../zero-system/resources/db/migration/common/V2__positions_and_announcements.sql#L22) · [Kotlin 枚举](https://kotlinlang.org/docs/enum-classes.html)
+项目把 `AnnouncementStatus` 的 `.name` 写入 `AnnouncementRecord.status`，公告响应也返回这个字符串。`PUBLISHED` 同时出现在收件箱查询里，迁移中的约束则检查状态与发布时间的组合。修改枚举常量名时，先核对已有数据、表约束、查询和 API 调用方，并安排兼容或迁移。新领域需要独立演进时，可以给枚举定义稳定的 `code`，在数据库和 HTTP 边界显式映射。`ordinal` 取决于声明顺序，插入常量或调整顺序可能改变已有常量的序号。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L106) · [公告 API](organization-notices.md#公告管理) · [公告迁移](../zero-system/resources/db/migration/common/V2__positions_and_announcements.sql#L22) · [Kotlin 枚举](https://kotlinlang.org/docs/enum-classes.html)
 
 ### 用密封类型处理不同结果
 
-下面的教学示例让找到用户的分支携带详情，缺失的分支只表达状态。`when` 表达式覆盖所有分支后可以省略 `else`。新增分支后，编译器会指出哪些 `when` 表达式需要补齐分支。当前仓库的用户详情服务通过 `missing("用户")` 处理查无用户。[Kotlin 密封类型](https://kotlinlang.org/docs/sealed-classes.html) · [用户详情服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L101)
+下面的教学示例让找到用户的分支携带详情，缺失的分支只表达状态。`when` 表达式覆盖所有分支后可以省略 `else`。新增分支后，编译器会指出哪些 `when` 表达式需要补齐分支。当前仓库的用户详情服务通过 `missing("用户")` 处理查无用户。[Kotlin 密封类型](https://kotlinlang.org/docs/sealed-classes.html) · [用户详情服务](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt#L131)
 
 ```kotlin
 import dev.zerokotlin.system.dto.UserDetails
@@ -181,10 +181,10 @@ private fun lookupLabel(result: UserLookup): String = when (result) {
 
 ### 构造注入和事务边界
 
-控制器通过 `class SystemUserController(private val users: SystemUsers)` 接收一个服务 Bean。标注了 `@Service` 的 `SystemUsers` 以同样方式接收 Mapper、密码编码器和 `SystemWrites`。Spring 可自动注入唯一构造器的依赖。项目应用了 `kotlin-spring` 插件，自动开放 `@Service` 等组件类及其成员，供 Spring 创建基于子类的代理。[用户控制器](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L43) · [系统模块构建配置](../zero-system/build.gradle.kts) · [Spring 的 Kotlin 支持](https://docs.spring.io/spring-framework/reference/languages/kotlin/spring-projects-in.html)
+控制器通过 `class SystemUserController(private val users: SystemUsers)` 接收一个服务 Bean。标注了 `@Service` 的 `SystemUsers` 以同样方式接收 Mapper、密码编码器和 `SystemWrites`。Spring 可自动注入唯一构造器的依赖。项目应用了 `kotlin-spring` 插件，自动开放 `@Service` 等组件类及其成员，供 Spring 创建基于子类的代理。[用户控制器](../zero-system/src/dev/zerokotlin/system/controller/SystemUserController.kt#L46) · [系统模块构建配置](../zero-system/build.gradle.kts) · [Spring 的 Kotlin 支持](https://docs.spring.io/spring-framework/reference/languages/kotlin/spring-projects-in.html)
 
 - 查询入口如 `SystemUsers.list` 使用 `@Transactional(readOnly = true)`。`readOnly` 向事务设施声明只读意图。
-- 写入入口如 `SystemAnnouncements.publish` 使用 Spring 的 `@Transactional`。控制器通过 Spring Bean 调用它，事务内的私有 `transition` 完成状态检查和写入。`SystemWrites.authorize` 先取得系统写入锁并重新鉴权，数据变更和 `writes.record` 插入的审计随同一事务提交。`SystemWrites` 使用 `Propagation.MANDATORY` 要求调用方持有事务。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L102) · [系统写入服务](../zero-system/src/dev/zerokotlin/system/service/SystemWrites.kt#L26)
+- 写入入口如 `SystemAnnouncements.publish` 使用 Spring 的 `@Transactional`。控制器通过 Spring Bean 调用它，事务内的私有 `transition` 完成状态检查和写入。`SystemWrites.authorize` 先取得系统写入锁并重新鉴权，数据变更和 `writes.record` 插入的审计随同一事务提交。`SystemWrites` 使用 `Propagation.MANDATORY` 要求调用方持有事务。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L106) · [系统写入服务](../zero-system/src/dev/zerokotlin/system/service/SystemWrites.kt#L26)
 - 默认代理模式在经过代理的调用入口应用事务配置。同一个类中的方法直接调用另一个方法时，沿用当前事务上下文。默认情况下，从事务入口抛出的运行时异常和 `Error` 会触发回滚。[Spring 声明式事务](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 
 ### 分层校验参数

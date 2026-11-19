@@ -17,7 +17,7 @@ Vite 将同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其�
 
 ## 菜单与权限
 
-`GET /api/auth/me` 提供 `administrator` 和权限映射，`GET /api/auth/me/menus` 提供该账号可见的菜单树。登录后优先打开可见的用户目录，其余账号进入收件箱。收件箱对所有登录账号开放。
+`GET /api/auth/me` 提供 `administrator` 和权限映射，`GET /api/auth/me/menus` 提供该账号可见的菜单树。登录后优先打开可见的用户目录，其余账号进入收件箱。收件箱和个人中心对所有登录账号开放。
 
 后端迁移初始化系统菜单。升级既有库时会保留已配置的同路径菜单。停用节点、停用祖先或缺少权限会同时影响侧边栏和直接访问。
 
@@ -32,7 +32,12 @@ Vite 将同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其�
 | 审计 | `/audits` | `system:audit:read` |
 | 岗位 | `/positions` | `system:position:read` |
 | 公告管理 | `/announcements` | `system:announcement:read` |
+| 文件管理 | `/files` | `system:file:read` |
+| 实时消息 | `/realtime` | `system:message:read` |
+| 定时任务 | `/jobs` | `system:job:read` |
+| 运行监控 | `/operations` | `system:monitor:read` |
 | 收件箱 | `/inbox` | 登录 |
+| 个人中心 | `/profile` | 登录 |
 
 扩展页面先在 [navigation.ts](src/router/navigation.ts) 的 `extensionPages` 注册固定路由、页面组件和页面权限，再使用[模块迁移或系统 API](../docs/system.md)发布含同一路径的菜单节点。已注册且有权访问的路径可成为导航链接。工作台支持任意层级的菜单分组。
 
