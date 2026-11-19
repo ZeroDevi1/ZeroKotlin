@@ -4,7 +4,19 @@ ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化后端脚手架，提供
 
 ## 首次启动
 
-安装 JDK 25。在仓库根目录的 Bash 或 Zsh 中执行以下命令。密码至少为 12 个字符，最多 72 个 UTF-8 字节。
+项目使用 JDK 25。已使用 vfox 的开发者可在仓库根目录安装并选定项目版本。首次使用 Java 插件时先执行 `vfox add java`。
+
+```sh
+vfox install java@25.0.5-tem
+vfox use --project java@25.0.5+8-tem
+./gradlew -q :zero-app:javaToolchains
+```
+
+Gradle 会从 `.vfox/sdks/java` 查找本项目的工具链，也支持自动发现已安装的其他 JDK 25。工具链报告应显示 `Language Version: 25` 和 `Is JDK: true`。
+
+macOS 上，若旧版 vfox Java 插件留下空的 `Contents/Home`，Gradle 会在该目录中查找 `bin/java`。确认 `.vfox/sdks/java/bin/javac` 存在后，可执行 `rmdir .vfox/sdks/java/Contents/Home` 移除空目录，再刷新 Gradle 项目。
+
+准备好 JDK 后，在仓库根目录的 Bash 或 Zsh 中设置首次管理员密码。密码至少为 12 个字符，最多 72 个 UTF-8 字节。
 
 ```sh
 export ZERO_SYSTEM_ADMIN_USERNAME=admin
