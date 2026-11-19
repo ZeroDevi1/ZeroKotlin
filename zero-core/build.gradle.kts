@@ -47,6 +47,8 @@ dependencies {
     implementation(kotlin("reflect"))
     api(libs.swagger.annotations)
     implementation(libs.springdoc.ui)
+    implementation(libs.minio)
+    implementation(libs.aliyun.oss)
 
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")
     compileOnly("org.apache.kafka:kafka-clients")

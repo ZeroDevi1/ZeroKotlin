@@ -10,6 +10,7 @@ import dev.zerokotlin.system.entity.AnnouncementRecord
 import dev.zerokotlin.system.entity.DepartmentRecord
 import dev.zerokotlin.system.entity.DictionaryItemRecord
 import dev.zerokotlin.system.entity.DictionaryRecord
+import dev.zerokotlin.system.entity.FileRecord
 import dev.zerokotlin.system.entity.LoginAuditRecord
 import dev.zerokotlin.system.entity.MenuRecord
 import dev.zerokotlin.system.entity.OperationAuditRecord
@@ -46,6 +47,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             MenuRecord::class.java,
             DictionaryRecord::class.java,
             DictionaryItemRecord::class.java,
+            FileRecord::class.java,
             SessionRecord::class.java,
             LoginAuditRecord::class.java,
             OperationAuditRecord::class.java,

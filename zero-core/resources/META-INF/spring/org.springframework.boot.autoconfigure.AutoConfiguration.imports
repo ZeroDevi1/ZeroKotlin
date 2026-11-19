@@ -1,6 +1,7 @@
 dev.zerokotlin.core.config.BearerSecurityAutoConfiguration
 dev.zerokotlin.core.config.DatabaseAutoConfiguration
 dev.zerokotlin.core.config.ElasticsearchConfiguration
+dev.zerokotlin.core.config.FileStorageAutoConfiguration
 dev.zerokotlin.core.config.JpaAutoConfiguration
 dev.zerokotlin.core.config.KafkaConfiguration
 dev.zerokotlin.core.config.OpenApiConfiguration

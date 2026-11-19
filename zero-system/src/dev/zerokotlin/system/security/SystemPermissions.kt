@@ -9,6 +9,18 @@ const val ANNOUNCEMENT_WRITE = "system:announcement:write"
 /** 新建和修改字典及字典项的权限编码。 */
 const val DICTIONARY_WRITE = "system:dictionary:write"
 
+/** 查询文件管理列表的权限编码。 */
+const val FILE_READ = "system:file:read"
+
+/** 上传文件的权限编码。 */
+const val FILE_UPLOAD = "system:file:upload"
+
+/** 下载文件内容的权限编码。 */
+const val FILE_DOWNLOAD = "system:file:download"
+
+/** 删除文件或重试删除的权限编码。 */
+const val FILE_DELETE = "system:file:delete"
+
 /** 创建和修改菜单节点的权限编码。 */
 const val MENU_WRITE = "system:menu:write"
 
