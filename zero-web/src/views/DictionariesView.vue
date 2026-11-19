@@ -5,15 +5,20 @@ import { request } from '@/api/client'
 import { apiPath, codePattern, type DictionaryItem, type DictionarySummary } from '@/api/system'
 import { useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
+import ExcelActions from '@/components/ExcelActions.vue'
 import ListState from '@/components/ListState.vue'
 import StatusChip from '@/components/StatusChip.vue'
 import { useAction, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const mayWrite = computed(() => auth.can('system:dictionary:write'))
+const mayExport = computed(() => auth.can('system:dictionary:read'))
 const { data, loading, error, reload } = useResource<DictionarySummary[]>(() => apiPath('/dictionaries'))
 const selected = ref<DictionarySummary | null>(null)
 const activeOnly = ref(false)
+const itemExcelPath = computed(() => selected.value
+  ? apiPath(`/dictionaries/${encodeURIComponent(selected.value.id)}/items/excel`)
+  : '')
 const {
   data: items, loading: itemLoading, error: itemError, reload: reloadItems,
 } = useResource<DictionaryItem[]>(() => {
@@ -92,6 +97,9 @@ async function save() {
   </header>
   <p v-if="feedback" class="notice notice-success" role="status">{{ feedback }}</p>
   <section class="panel" aria-label="字典列表">
+    <ExcelActions v-if="mayWrite || mayExport" name="字典" :base-path="apiPath('/dictionaries/excel')"
+      :export-path="mayExport ? apiPath('/dictionaries/excel/export') : undefined"
+      :can-import="mayWrite" :max-rows="1000" @imported="reload" />
     <ListState :loading="loading" :error="error" :empty="!data?.length" empty-text="暂无字典。" @retry="reload">
       <div class="table-wrap">
         <table class="data-table" aria-label="字典列表">
@@ -125,6 +133,9 @@ async function save() {
       <button type="button" class="btn btn-quiet" :aria-pressed="!activeOnly" @click="activeOnly = false">全部字典项</button>
       <button type="button" class="btn btn-quiet" :aria-pressed="activeOnly" @click="activeOnly = true">预览使用中的字典项</button>
     </div>
+    <ExcelActions v-if="!activeOnly && (mayWrite || mayExport)" :key="selected.id" name="字典项" :base-path="itemExcelPath"
+      :export-path="mayExport ? `${itemExcelPath}/export` : undefined"
+      :can-import="mayWrite" :max-rows="1000" @imported="reloadItems" />
     <ListState :loading="itemLoading" :error="itemError" :empty="!items?.length" empty-text="暂无字典项。" @retry="reloadItems">
       <div class="table-wrap">
         <table class="data-table" aria-label="字典项列表">

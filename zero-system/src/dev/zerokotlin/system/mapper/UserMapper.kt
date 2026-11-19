@@ -1,7 +1,6 @@
 package dev.zerokotlin.system.mapper
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper
-import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.UserQuery
 import dev.zerokotlin.system.dto.UserRow
 import dev.zerokotlin.system.entity.UserRecord
@@ -23,10 +22,15 @@ interface UserMapper : BaseMapper<UserRecord> {
      * 分页查询可见范围内且符合列表筛选条件的用户。
      *
      * @param query 操作者身份、授权范围及可选的部门和角色筛选条件。
-     * @param window 当前页的条数和偏移量。
+     * @param limit 最多读取的条数。
+     * @param offset 首行前跳过的条数。
      * @return 当前页的用户投影，按登录名和用户 ID 依次升序排列。
      */
-    fun findUsers(@Param("query") query: UserQuery, @Param("window") window: PageWindow): List<UserRow>
+    fun findUsers(
+        @Param("query") query: UserQuery,
+        @Param("limit") limit: Int,
+        @Param("offset") offset: Long,
+    ): List<UserRow>
 
     /**
      * 按 ID 查询操作者可访问的单个用户。

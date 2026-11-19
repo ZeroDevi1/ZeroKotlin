@@ -27,6 +27,9 @@ import dev.zerokotlin.system.security.USER_MANAGE
 import dev.zerokotlin.system.security.USER_READ
 import dev.zerokotlin.system.security.USER_UPDATE
 import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
+import dev.zerokotlin.system.support.ExcelImportRow
+import dev.zerokotlin.system.support.atExcelRow
 import dev.zerokotlin.system.support.checkedPassword
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
@@ -80,15 +83,27 @@ class SystemUsers(
     @Transactional(readOnly = true)
     fun list(window: PageWindow, departmentId: String?, roleId: String?): PageResult<UserListEntry> {
         val filter = UserQuery(currentSystemActor(), USER_READ, departmentId, roleId)
-        val page = users.findUsers(filter, window)
-        val byUser = if (page.isEmpty()) emptyMap() else {
-            relations.findAssignedRoles(page.map { it.id }).groupBy(
-                keySelector = { it.userId },
-                valueTransform = { AssignedRole(it.roleId, it.code, it.name) },
-            )
-        }
-        val entries = page.map { UserListEntry(it.summary(), byUser[it.id].orEmpty()) }
+        val entries = listEntries(users.findUsers(filter, window.size, window.offset))
         return window.result(entries, users.countUsers(filter))
+    }
+
+    /** 读取授权范围内符合筛选条件的用户和角色，超出单次导出上限时返回 400。 */
+    @Transactional(readOnly = true)
+    fun forExcel(departmentId: String?, roleId: String?): List<UserListEntry> {
+        val filter = UserQuery(currentSystemActor(), USER_READ, departmentId, roleId)
+        val rows = users.findUsers(filter, EXCEL_EXPORT_ROWS + 1, 0)
+        if (rows.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个用户，请缩小筛选范围")
+        return rows.chunked(100).flatMap(::listEntries)
+    }
+
+    /** 补齐用户行关联的全部角色，保持用户行及其角色的原有顺序。 */
+    private fun listEntries(rows: List<UserRow>): List<UserListEntry> {
+        if (rows.isEmpty()) return emptyList()
+        val byUser = relations.findAssignedRoles(rows.map { it.id }).groupBy(
+            keySelector = { it.userId },
+            valueTransform = { AssignedRole(it.roleId, it.code, it.name) },
+        )
+        return rows.map { UserListEntry(it.summary(), byUser[it.id].orEmpty()) }
     }
 
     /**
@@ -111,19 +126,44 @@ class SystemUsers(
      */
     @Transactional
     fun create(request: CreateUserRequest): CreatedResource {
+        val account = prepareAccount(request)
+        val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
+        return insertAccount(account, request.roleIds, actor)
+    }
+
+    /**
+     * 按单个账号创建的规则导入整份工作簿。先生成独立密码哈希，再取得写锁并重新授权。
+     * 任意一行失败时回滚账号、角色关联及审计。
+     */
+    @Transactional
+    fun importExcel(rows: List<ExcelImportRow<CreateUserRequest>>) {
+        val current = currentSystemActor()
+        current.requireScope(USER_MANAGE)
+        current.requireAdministrator()
+        val accounts = rows.map { row -> row to atExcelRow(row.number) { prepareAccount(row.request) } }
+        val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
+        for ((row, account) in accounts) {
+            atExcelRow(row.number) { insertAccount(account, row.request.roleIds, actor) }
+        }
+    }
+
+    /** 校验账号文本并为初始密码生成哈希，准备插入记录。 */
+    private fun prepareAccount(request: CreateUserRequest): UserRecord {
         val username = normalizeUsername(request.username) ?: invalid("用户名格式无效")
         val displayName = checkedText(request.displayName, "displayName")
         val passwordHash = passwords.hashPassword(checkedPassword(request.password))
-        val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
-        if (users.selectCount(query<UserRecord>().eq("username", username)) != 0L) conflict("用户名已存在")
-        validateDepartment(request.departmentId)
-        validateRoles(request.roleIds)
+        return UserRecord(newId(), username, displayName, passwordHash, request.departmentId)
+    }
 
-        val id = newId()
-        users.insert(UserRecord(id, username, displayName, passwordHash, request.departmentId))
-        setRoles(id, request.roleIds)
-        writes.record(actor, "user.create", id)
-        return CreatedResource(id)
+    /** 在已经授权的写事务内检查账号及引用，创建角色关联并记录账号创建审计。 */
+    private fun insertAccount(account: UserRecord, roleIds: Set<String>, actor: SystemActor): CreatedResource {
+        if (users.selectCount(query<UserRecord>().eq("username", account.username)) != 0L) conflict("用户名已存在")
+        validateDepartment(account.departmentId)
+        validateRoles(roleIds)
+        users.insert(account)
+        setRoles(account.id, roleIds)
+        writes.record(actor, "user.create", account.id)
+        return CreatedResource(account.id)
     }
 
     /**

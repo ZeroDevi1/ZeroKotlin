@@ -11,10 +11,15 @@ import dev.zerokotlin.system.entity.DictionaryRecord
 import dev.zerokotlin.system.mapper.DictionaryItemMapper
 import dev.zerokotlin.system.mapper.DictionaryMapper
 import dev.zerokotlin.system.security.DICTIONARY_WRITE
+import dev.zerokotlin.system.security.SystemActor
+import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
+import dev.zerokotlin.system.support.ExcelImportRow
+import dev.zerokotlin.system.support.atExcelRow
 import dev.zerokotlin.system.support.checkedCode
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
 import dev.zerokotlin.system.support.flag
+import dev.zerokotlin.system.support.invalid
 import dev.zerokotlin.system.support.missing
 import dev.zerokotlin.system.support.newId
 import dev.zerokotlin.system.support.query
@@ -56,8 +61,17 @@ class SystemDictionaries(
      *
      * @return 按编码升序排列的所有字典摘要，含停用字典。
      */
-    fun list(): List<DictionarySummary> =
-        dictionaries.selectList(query<DictionaryRecord>().orderByAsc("code")).map(DictionaryRecord::summary)
+    fun list(): List<DictionarySummary> = listDictionaries()
+
+    /** 读取可导出的字典目录，包含停用字典。 */
+    fun dictionariesForExcel(): List<DictionarySummary> =
+        listDictionaries(EXCEL_EXPORT_ROWS + 1).also {
+            if (it.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个字典")
+        }
+
+    private fun listDictionaries(limit: Int? = null): List<DictionarySummary> =
+        dictionaries.selectList(query<DictionaryRecord>().orderByAsc("code").last(limit != null, "LIMIT $limit"))
+            .map(DictionaryRecord::summary)
 
     /**
      * 根据业务编码读取启用字典的可用选项。
@@ -80,6 +94,18 @@ class SystemDictionaries(
      */
     fun items(dictionaryId: String): List<DictionaryItem> = listItems(dictionary(dictionaryId).id, enabledOnly = false)
 
+    /** 读取指定字典中可导出的字典项，包含停用项。 */
+    @Transactional(readOnly = true)
+    fun itemsForExcel(dictionaryId: String): List<DictionaryItem> =
+        listItems(dictionary(dictionaryId).id, enabledOnly = false, limit = EXCEL_EXPORT_ROWS + 1).also {
+            if (it.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个字典项")
+        }
+
+    /** 校验字典项操作指定的父字典，包含停用字典。 */
+    fun requireDictionary(dictionaryId: String) {
+        dictionary(dictionaryId)
+    }
+
     /**
      * 校验编码后新建字典。编码已被占用时返回 409。
      *
@@ -89,6 +115,17 @@ class SystemDictionaries(
     @Transactional
     fun create(request: CreateDictionaryRequest): CreatedResource {
         val actor = writes.authorize(DICTIONARY_WRITE)
+        return insertDictionary(request, actor)
+    }
+
+    /** 在同一笔授权事务中新增全部字典。任意一行失败时回滚新增内容及审计。 */
+    @Transactional
+    fun importExcel(rows: List<ExcelImportRow<CreateDictionaryRequest>>) {
+        val actor = writes.authorize(DICTIONARY_WRITE)
+        rows.forEach { row -> atExcelRow(row.number) { insertDictionary(row.request, actor) } }
+    }
+
+    private fun insertDictionary(request: CreateDictionaryRequest, actor: SystemActor): CreatedResource {
         val code = checkedCode(request.code)
         if (dictionaries.selectCount(query<DictionaryRecord>().eq("code", code)) != 0L) conflict("字典编码已存在")
 
@@ -125,8 +162,20 @@ class SystemDictionaries(
     fun createItem(dictionaryId: String, request: DictionaryItemRequest): CreatedResource {
         val actor = writes.authorize(DICTIONARY_WRITE)
         val dictionary = dictionary(dictionaryId)
+        return insertItem(dictionary.id, request, actor)
+    }
+
+    /** 在同一笔授权事务中向指定字典新增全部字典项。任意一行失败时回滚新增内容及审计。 */
+    @Transactional
+    fun importItemsExcel(dictionaryId: String, rows: List<ExcelImportRow<DictionaryItemRequest>>) {
+        val actor = writes.authorize(DICTIONARY_WRITE)
+        val dictionary = dictionary(dictionaryId)
+        rows.forEach { row -> atExcelRow(row.number) { insertItem(dictionary.id, row.request, actor) } }
+    }
+
+    private fun insertItem(dictionaryId: String, request: DictionaryItemRequest, actor: SystemActor): CreatedResource {
         val id = newId()
-        items.insert(item(id, dictionary.id, request))
+        items.insert(item(id, dictionaryId, request))
         writes.record(actor, "dictionary.item.create", id)
         return CreatedResource(id)
     }
@@ -160,12 +209,13 @@ class SystemDictionaries(
      *
      * @param dictionaryId 已查到的字典 ID。
      * @param enabledOnly 为 true 时仅匹配启用选项。
+     * @param limit 查询行数上限，null 时读取全部匹配记录。
      * @return 按排序值和 ID 升序排列的字典项。
      */
-    private fun listItems(dictionaryId: String, enabledOnly: Boolean): List<DictionaryItem> =
+    private fun listItems(dictionaryId: String, enabledOnly: Boolean, limit: Int? = null): List<DictionaryItem> =
         items.selectList(
             query<DictionaryItemRecord>().eq("dictionary_id", dictionaryId)
-                .eq(enabledOnly, "enabled", 1).orderByAsc("sort_order", "id"),
+                .eq(enabledOnly, "enabled", 1).orderByAsc("sort_order", "id").last(limit != null, "LIMIT $limit"),
         ).map(DictionaryItemRecord::item)
 
     /**

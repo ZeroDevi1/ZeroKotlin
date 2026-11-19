@@ -6,6 +6,9 @@ const val ANNOUNCEMENT_READ = "system:announcement:read"
 /** 创建、修改、发布和撤回公告的权限编码。 */
 const val ANNOUNCEMENT_WRITE = "system:announcement:write"
 
+/** 查询管理用字典及字典项的权限编码。 */
+const val DICTIONARY_READ = "system:dictionary:read"
+
 /** 建立实时连接、接收实时消息和查询在线人数的权限编码。 */
 const val MESSAGE_READ = "system:message:read"
 

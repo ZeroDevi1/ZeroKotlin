@@ -8,6 +8,7 @@ import {
 } from '@/api/system'
 import { refreshSession, useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
+import ExcelActions from '@/components/ExcelActions.vue'
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
 import StatusChip from '@/components/StatusChip.vue'
@@ -16,6 +17,7 @@ import { useAction, usePage, useQuery, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const manage = computed(() => auth.user?.administrator && auth.can('system:user:manage'))
+const mayExport = computed(() => auth.can('system:user:read'))
 const canReadRoles = computed(() => auth.can('system:role:read'))
 const canReadDepartments = computed(() => auth.can('system:department:read'))
 
@@ -146,6 +148,9 @@ async function save() {
   </header>
   <p v-if="feedback" class="notice notice-success" role="status">{{ feedback }}</p>
   <section class="panel" aria-label="用户目录">
+    <ExcelActions v-if="manage || mayExport" name="用户" :base-path="apiPath('/users/excel')"
+      :export-path="mayExport ? apiPath('/users/excel/export', applied) : undefined"
+      :can-import="!!manage" :max-rows="100" @imported="reload" />
     <form class="toolbar" @submit.prevent="applyFilters">
       <label class="field">
         <span>{{ departments ? '部门' : '部门 ID' }}</span>

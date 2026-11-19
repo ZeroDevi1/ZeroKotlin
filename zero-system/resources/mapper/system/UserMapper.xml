@@ -62,7 +62,7 @@
         SELECT <include refid="userColumns"/> FROM sys_user u
         <include refid="userFilters"/>
         ORDER BY u.username, u.id
-        LIMIT #{window.size} OFFSET #{window.offset}
+        LIMIT #{limit} OFFSET #{offset}
     </select>
 
     <select id="findVisible" resultMap="userRow">

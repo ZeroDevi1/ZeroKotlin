@@ -65,6 +65,7 @@ pnpm dev
 | 用 Swagger UI 调试接口、获取 OpenAPI JSON 或 YAML、为新接口添加说明 | [Swagger UI 与 OpenAPI](docs/openapi.md) |
 | 上传、检索、下载和删除本地或对象存储中的文件 | [文件管理](docs/files.md) |
 | 发送群发消息、私信及查看在线人数 | [实时消息](docs/realtime.md) |
+| 下载模板、导入或导出用户、字典和字典项 | [Excel 操作](docs/excel.md) |
 | 调用登录、角色、部门、行级权限和审计接口 | [系统 API 和权限表](docs/system.md) |
 | 管理岗位和成员、发布或撤回公告、读取个人收件箱 | [岗位、公告和收件箱 API](docs/organization-notices.md) |
 | 添加可卸载模块、启用搜索或收发 Kafka 消息 | [扩展指南与请求示例](docs/extensions.md) |

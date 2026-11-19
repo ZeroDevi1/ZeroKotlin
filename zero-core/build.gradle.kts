@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.springdoc.ui)
     implementation(libs.minio)
     implementation(libs.aliyun.oss)
+    implementation(libs.apache.poi.ooxml)
 
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")
     compileOnly("org.apache.kafka:kafka-clients")
