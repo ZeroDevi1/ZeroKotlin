@@ -27,7 +27,18 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 ./gradlew :zero-system:bootRun
 ```
 
-应用在空用户表中创建首个管理员。后续启动可以移除这两个环境变量。运行期间可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
+应用在空用户表中创建首个管理员。后续启动可以移除这两个环境变量。在默认开发环境中，可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
+
+### 开发与生产配置
+
+Spring Boot 先读取公共配置，再应用所选环境。数据库、缓存、文件存储、可选中间件、安全及审计的完整示例见 [application.yaml](zero-system/resources/application.yaml)。
+
+| 环境 | 启动方式 | 环境差异 |
+| --- | --- | --- |
+| [dev](zero-system/resources/application-dev.yaml) | `./gradlew :zero-system:bootRun` | 默认 SQLite 文件为 `data/zero-kotlin.db`，开放 OpenAPI 和 Swagger UI，登录默认无需验证码。 |
+| [prod](zero-system/resources/application-prod.yaml) | `SPRING_PROFILES_ACTIVE=prod ./gradlew :zero-system:bootRun` | 本地数据库和文件默认保存在 `data/prod/`，开启验证码、审计 IP 脱敏与纯文本清理，关闭 OpenAPI 和 Swagger UI。 |
+
+相对路径从应用工作目录解析。生产部署可用 `ZERO_DATABASE_MODE=postgresql` 和 `ZERO_DATABASE_POSTGRESQL_URL` 等环境变量指定外部数据库。首次管理员密码及可选服务密钥由部署环境提供。使用临时 SQLite 和随机回环端口的自动化测试可通过 `./gradlew :zero-core:test :zero-system:test` 运行。
 
 ## 启动管理端
 

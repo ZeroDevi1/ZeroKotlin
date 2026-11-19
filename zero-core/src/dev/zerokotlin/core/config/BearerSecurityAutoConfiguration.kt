@@ -23,6 +23,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository
 import org.springframework.web.filter.OncePerRequestFilter
 
 /** Servlet 应用提供会话认证实现时，注册无状态的 Bearer 安全过滤链并启用方法级鉴权。 */
@@ -47,6 +48,7 @@ internal class BearerSecurityAutoConfiguration {
         sessions: BearerSessionAuthentication,
         publicOperations: ObjectProvider<PublicApiOperation>,
     ): SecurityFilterChain {
+        val requestContexts = RequestAttributeSecurityContextRepository()
         http
             .csrf { it.disable() }
             .requestCache { it.disable() }
@@ -54,6 +56,7 @@ internal class BearerSecurityAutoConfiguration {
             .httpBasic { it.disable() }
             .logout { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .securityContext { it.securityContextRepository(requestContexts) }
             .exceptionHandling { settings ->
                 settings.authenticationEntryPoint { _, response, _ ->
                     response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
@@ -78,7 +81,7 @@ internal class BearerSecurityAutoConfiguration {
                 ).permitAll()
                 rules.anyRequest().authenticated()
             }
-            .addFilterBefore(BearerFilter(sessions), AnonymousAuthenticationFilter::class.java)
+            .addFilterBefore(BearerFilter(sessions, requestContexts), AnonymousAuthenticationFilter::class.java)
         return http.build()
     }
 }
@@ -87,8 +90,12 @@ internal class BearerSecurityAutoConfiguration {
  * 将格式有效的 Bearer 令牌转为摘要后认证会话。
  *
  * @property sessions 接收令牌摘要并返回会话认证结果的组件。
+ * @property requestContexts 在同一请求的异步派发阶段恢复身份，生命周期止于当前请求。
  */
-private class BearerFilter(private val sessions: BearerSessionAuthentication) : OncePerRequestFilter() {
+private class BearerFilter(
+    private val sessions: BearerSessionAuthentication,
+    private val requestContexts: RequestAttributeSecurityContextRepository,
+) : OncePerRequestFilter() {
     /**
      * 认证成功时将身份写入新的安全上下文。请求头缺失、格式不符或会话认证返回空值时，
      * 继续交由后续过滤器处理。
@@ -108,6 +115,7 @@ private class BearerFilter(private val sessions: BearerSessionAuthentication) : 
             val context = SecurityContextHolder.createEmptyContext()
             context.authentication = authentication
             SecurityContextHolder.setContext(context)
+            requestContexts.saveContext(context, request, response)
         }
         filterChain.doFilter(request, response)
     }

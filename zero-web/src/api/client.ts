@@ -98,3 +98,12 @@ export async function requestBlob(path: string, options: RequestOptions = {}): P
   const response = await send(path, options, '*/*')
   return response.blob()
 }
+
+/** 复用同源 Bearer 认证与错误处理，按到达顺序读取 UTF-8 编码的 SSE 文本。 */
+export async function requestEventStream(path: string, signal: AbortSignal): Promise<ReadableStream<string>> {
+  const response = await send(path, { signal }, 'text/event-stream')
+  if (!response.body || response.headers.get('Content-Type')?.split(';')[0] !== 'text/event-stream') {
+    throw new ApiError(response.status, '服务未返回事件流。')
+  }
+  return response.body.pipeThrough(new TextDecoderStream())
+}

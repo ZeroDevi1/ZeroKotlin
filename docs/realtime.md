@@ -31,6 +31,19 @@ HTTP 请求使用 `Authorization: Bearer <token>`。发送正文修剪首尾空�
 
 STOMP `MESSAGE` 帧正文是 JSON 对象，字段为 `id`、`senderId`、`senderName`、`body` 和 `sentAt`，时间使用 Unix 毫秒。发送者字段取自服务端会话。提交前写入操作审计，动作使用对应的发送权限编码，目标记为 `broadcast` 或接收用户 ID，审计只记录操作元数据。
 
+## SSE 通信演示
+
+在管理端「实时消息 → SSE 通信演示」点击「接收示例事件」，页面会逐帧显示服务端发送的三个 `tick` 和一个 `done`。流自动结束，也可以手动断开。`GET /api/realtime/sse/demo` 沿用登录会话和 `system:message:read` 权限。浏览器使用带 Bearer 请求头的 `fetch`，令牌只经请求头传递。
+
+使用具备该权限的账号登录，把登录响应的令牌放入当前终端的 `ACCESS_TOKEN`，即可直接观察事件到达。
+
+```sh
+curl -N --fail-with-body -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: text/event-stream" http://localhost:8080/api/realtime/sse/demo
+```
+
+请求带 `Last-Event-ID: 2` 时只发送第 3 个 tick 和结束事件。最后收到的 ID 已为 3 时返回 204，非法 ID 返回 400。代理需为该路径关闭响应缓冲，以便客户端即时显示事件。示例事件序列仅用于演示传输。[Spring MVC 流式响应](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-async.html)
+
 ## 部署与范围
 
 - Vite 开发和预览代理会转发该路径上的 WebSocket 升级。部署时同源反向代理也须转发升级，并让后端看到浏览器访问的主机、端口和协议，以通过同源检查。HTTPS 页面使用 `wss://`。

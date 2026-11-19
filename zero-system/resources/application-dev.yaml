@@ -1,0 +1,25 @@
+# 本地开发。相对路径从应用工作目录解析，首次管理员信息见 application.yaml。
+zero:
+  database:
+    sqlite:
+      path: data/zero-kotlin.db
+  cache:
+    redis:
+      key-prefix: 'zero-kotlin:'
+  files:
+    local:
+      path: data/files
+  system:
+    captcha:
+      enabled: false
+    audit:
+      mask-remote-address: false
+  security:
+    xss:
+      enabled: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

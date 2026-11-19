@@ -2,6 +2,7 @@
 import { Client } from '@stomp/stompjs'
 import { computed, ref, watch } from 'vue'
 import { ApiError, request } from '@/api/client'
+import SseDemo from '@/components/SseDemo.vue'
 import { errorMessage, formatTime } from '@/hooks/useResourcePage'
 import { sessionAuthorization, useAuth } from '@/store/auth'
 
@@ -170,6 +171,7 @@ async function send() {
 
     <p v-if="!canRead" class="empty">没有读取实时消息的权限。</p>
     <template v-else>
+      <SseDemo />
       <div class="panel presence">
         <p role="status">{{ connectionLabels[connection] }}</p>
         <p>在线人数 <strong>{{ online ?? '—' }}</strong></p>

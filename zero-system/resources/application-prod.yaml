@@ -1,0 +1,27 @@
+# SPRING_PROFILES_ACTIVE=prod。将数据库和文件路径指向持久卷。
+# 与开发库目录隔离。使用远端数据库或 Redis 的部署可显式指定模式，避免启动时降级。
+zero:
+  database:
+    sqlite:
+      path: data/prod/zero-kotlin.db
+  cache:
+    redis:
+      key-prefix: 'zero-kotlin:prod:'
+  files:
+    local:
+      path: data/prod/files
+  system:
+    captcha:
+      enabled: true
+    audit:
+      mask-remote-address: true
+  security:
+    xss:
+      enabled: true
+
+# 生产默认关闭交互文档；健康端点继续沿用公共配置。
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

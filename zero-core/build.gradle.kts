@@ -23,6 +23,8 @@ optionalFeatures.forEach { feature ->
 }
 
 dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     api(platform(libs.spring.boot.bom))
     api(platform(libs.kotlin.bom))
     api("org.springframework.boot:spring-boot-starter-webmvc")
@@ -71,3 +73,5 @@ dependencies {
     add("kafkaImplementation", "org.apache.kafka:kafka-clients")
     add("kafkaImplementation", "org.springframework.boot:spring-boot-health")
 }
+
+tasks.test { useJUnitPlatform() }

@@ -18,6 +18,8 @@ fun enabled(flag: String): Boolean =
     providers.gradleProperty(flag).map { it.toBooleanStrict() }.getOrElse(false)
 
 dependencies {
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation(project(":zero-core"))
     if (enabled("withSearch")) {
         runtimeOnly(project(":zero-core")) {
@@ -33,6 +35,8 @@ dependencies {
         runtimeOnly(project(":zero-agent"))
     }
 }
+
+tasks.test { useJUnitPlatform() }
 
 tasks.withType<ProcessAot>().configureEach {
     args("--zero.database.mode=sqlite", "--zero.cache.mode=caffeine")
