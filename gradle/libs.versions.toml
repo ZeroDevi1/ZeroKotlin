@@ -18,6 +18,8 @@ kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin
 springdoc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations-jakarta", version.ref = "swagger-annotations" }
 agentscope-core = { module = "io.agentscope:agentscope-core", version.ref = "agentscope" }
+agentscope-harness = { module = "io.agentscope:agentscope-harness", version.ref = "agentscope" }
+agentscope-openai-spring-boot-starter = { module = "io.agentscope:agentscope-openai-spring-boot-starter", version.ref = "agentscope" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 aliyun-oss = { module = "com.aliyun.oss:aliyun-sdk-oss", version.ref = "aliyun-oss" }
 apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }

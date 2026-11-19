@@ -5,5 +5,6 @@ plugins {
 
 dependencies {
     implementation(project(":zero-core"))
-    implementation(libs.agentscope.core)
+    implementation(libs.agentscope.harness)
+    implementation(libs.agentscope.openai.spring.boot.starter)
 }

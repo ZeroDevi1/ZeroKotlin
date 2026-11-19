@@ -1,6 +1,6 @@
 # zero-agent
 
-`zero-agent` 是 ZeroKotlin 的可选 Kotlin 库，目前只包含构建配置和源码包占位。仓内依赖为 `zero-core`，通过版本目录引入 `io.agentscope:agentscope-core:2.0.4`。AgentScope Java 的 `agentscope-core` 提供 `ReActAgent` 等框架 API。[模块构建配置](build.gradle.kts) · [Gradle 版本目录](../gradle/libs.versions.toml) · [AgentScope Java 2.0 介绍](https://java.agentscope.io/v2/zh/intro) · [官方快速开始](https://java.agentscope.io/v2/zh/docs/quickstart)
+`zero-agent` 是 ZeroKotlin 的可选 Kotlin 库，目前只包含构建配置和源码包占位。模块依赖 `zero-core`，并通过版本目录引入 AgentScope Java 2.0.4 的 `agentscope-harness` 和 `agentscope-openai-spring-boot-starter`。[模块构建配置](build.gradle.kts) · [Gradle 版本目录](../gradle/libs.versions.toml) · [AgentScope Java 2.0 介绍](https://java.agentscope.io/v2/zh/intro) · [官方快速开始](https://java.agentscope.io/v2/zh/docs/quickstart)
 
 ## 按需装配
 
@@ -22,7 +22,7 @@
 ./gradlew :zero-system:bootJar -PwithAgent=true
 ```
 
-用下列两条命令可比较 `runtimeClasspath`。预期第一份报告显示默认运行时依赖，第二份还会在 `project :zero-agent` 下列出 `io.agentscope:agentscope-core:2.0.4`。
+用下列两条命令可比较 `runtimeClasspath`。预期第二份报告会额外列出 `project :zero-agent` 及其 AgentScope 依赖。
 
 ```sh
 ./gradlew :zero-system:dependencies --configuration runtimeClasspath
