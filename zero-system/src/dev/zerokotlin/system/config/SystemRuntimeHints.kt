@@ -4,6 +4,7 @@ import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.AssignedRoleRow
 import dev.zerokotlin.system.dto.AuthorityRow
 import dev.zerokotlin.system.dto.InboxEntry
+import dev.zerokotlin.system.dto.RealtimeMessage
 import dev.zerokotlin.system.dto.UserQuery
 import dev.zerokotlin.system.dto.UserRow
 import dev.zerokotlin.system.entity.AnnouncementRecord
@@ -55,6 +56,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             AuthorityRow::class.java,
             AssignedRoleRow::class.java,
             InboxEntry::class.java,
+            RealtimeMessage::class.java,
             PageWindow::class.java,
             UserQuery::class.java,
         ).forEach {

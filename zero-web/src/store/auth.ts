@@ -51,6 +51,10 @@ export function useAuth() {
   return auth
 }
 
+export function sessionAuthorization(): string | undefined {
+  if (token && token.expiresAt > Date.now()) return `Bearer ${token.accessToken}`
+}
+
 function clearSession(expired = false) {
   storeToken(undefined)
   auth.user = null

@@ -6,6 +6,15 @@ const val ANNOUNCEMENT_READ = "system:announcement:read"
 /** 创建、修改、发布和撤回公告的权限编码。 */
 const val ANNOUNCEMENT_WRITE = "system:announcement:write"
 
+/** 建立实时连接、接收实时消息和查询在线人数的权限编码。 */
+const val MESSAGE_READ = "system:message:read"
+
+/** 向当前实例上所有已订阅群发主题的用户发送实时消息的权限编码。 */
+const val MESSAGE_BROADCAST = "system:message:broadcast"
+
+/** 向授权范围内的指定用户发送实时消息的权限编码。 */
+const val MESSAGE_PRIVATE = "system:message:private"
+
 /** 新建和修改字典及字典项的权限编码。 */
 const val DICTIONARY_WRITE = "system:dictionary:write"
 

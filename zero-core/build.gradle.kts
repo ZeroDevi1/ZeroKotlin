@@ -26,6 +26,7 @@ dependencies {
     api(platform(libs.spring.boot.bom))
     api(platform(libs.kotlin.bom))
     api("org.springframework.boot:spring-boot-starter-webmvc")
+    api("org.springframework.boot:spring-boot-starter-websocket")
     api("org.springframework.boot:spring-boot-starter-security")
     api("org.springframework.boot:spring-boot-starter-cache")
 

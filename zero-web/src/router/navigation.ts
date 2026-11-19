@@ -1,4 +1,5 @@
 import {
+  MessageCircle,
   FolderOpen,
   BookOpen, Briefcase, ClipboardList, Inbox, KeyRound, LayoutGrid, Megaphone, Network, Shield, Users,
 } from '@lucide/vue'
@@ -31,6 +32,7 @@ const systemPages: Page[] = [
   { path: '/positions', label: '岗位', icon: Briefcase, authority: 'system:position:read', view: () => import('@/views/PositionsView.vue') },
   { path: '/announcements', label: '公告管理', icon: Megaphone, authority: 'system:announcement:read', view: () => import('@/views/AnnouncementsView.vue') },
   { path: '/files', label: '文件管理', icon: FolderOpen, authority: 'system:file:read', view: () => import('@/views/FilesView.vue') },
+  { path: '/realtime', label: '实时消息', icon: MessageCircle, authority: 'system:message:read', view: () => import('@/views/RealtimeView.vue') },
 ]
 
 // 扩展页面须先注册固定路由，再通过服务端菜单发布。
