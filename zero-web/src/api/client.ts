@@ -39,23 +39,29 @@ function problemText(payload: unknown): string | undefined {
   }
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function send(path: string, options: RequestOptions, accept: string): Promise<Response> {
   const url = new URL(path, window.location.origin)
   if (!path.startsWith('/api/') || url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
     throw new Error('API 路径必须位于同源的 /api/ 下。')
   }
 
   const token = url.pathname === '/api/auth/login' ? undefined : accessToken
-  const headers = new Headers({ Accept: 'application/json, application/problem+json' })
+  const headers = new Headers({ Accept: accept })
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+  let body: BodyInit | undefined
+  if (options.body instanceof FormData) {
+    body = options.body
+  } else if (options.body !== undefined) {
+    headers.set('Content-Type', 'application/json')
+    body = JSON.stringify(options.body)
+  }
 
   let response: Response
   try {
     response = await fetch(url, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body,
       signal: options.signal,
       cache: 'no-store',
       redirect: 'error',
@@ -74,9 +80,20 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError(response.status, response.status >= 500 ? fallback : problemText(problem) ?? fallback)
   }
 
+  return response
+}
+
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options, 'application/json, application/problem+json')
   if (response.status === 204 || response.status === 205) return undefined as T
   if (!response.headers.get('Content-Type')?.includes('json')) {
     throw new ApiError(response.status, '服务返回了无法识别的响应。')
   }
   return await response.json() as T
+}
+
+/** 下载同源 API 的二进制响应，沿用当前会话和统一的错误处理。 */
+export async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const response = await send(path, options, '*/*')
+  return response.blob()
 }
