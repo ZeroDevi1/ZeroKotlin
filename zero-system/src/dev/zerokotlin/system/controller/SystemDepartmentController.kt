@@ -10,6 +10,12 @@ import dev.zerokotlin.system.security.DEPARTMENT_WRITE
 import dev.zerokotlin.system.security.USER_READ
 import dev.zerokotlin.system.service.SystemDepartments
 import dev.zerokotlin.system.service.SystemUsers
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -30,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/system/departments")
+@Tag(name = "部门管理")
 class SystemDepartmentController(
     private val departments: SystemDepartments,
     private val users: SystemUsers,
@@ -41,6 +48,11 @@ class SystemDepartmentController(
      */
     @GetMapping("/tree")
     @PreAuthorize("hasAuthority('system:department:read')")
+    @Operation(
+        summary = "获取部门树",
+        description = "需要 `system:department:read` 权限。返回完整部门树，同级节点按排序值和 ID 升序排列。",
+        responses = [ApiResponse(responseCode = "200", description = "部门树", useReturnTypeSchema = true)],
+    )
     fun tree(): List<DepartmentNode> = departments.tree()
 
     /**
@@ -54,10 +66,19 @@ class SystemDepartmentController(
      */
     @GetMapping("/{id}/members")
     @PreAuthorize("hasAuthority('$USER_READ')")
+    @Operation(
+        summary = "分页查询部门成员",
+        description = "应用 `$USER_READ` 权限的行级范围。仅查询指定部门的直属成员。部门不存在时返回空分页。",
+        responses = [ApiResponse(responseCode = "200", description = "部门成员分页", useReturnTypeSchema = true)],
+    )
     fun members(
+        @Parameter(description = "要筛选的部门 ID")
         @PathVariable id: String,
+        @Parameter(description = "页码，从 1 开始")
         @RequestParam(defaultValue = "1") page: Int,
+        @Parameter(description = "每页条数，范围为 1–100")
         @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "按实际关联的角色 ID 筛选，含已停用角色")
         @RequestParam(required = false) roleId: String?,
     ): PageResult<UserListEntry> = users.list(PageWindow(page, size), id, roleId)
 
@@ -70,6 +91,15 @@ class SystemDepartmentController(
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$DEPARTMENT_WRITE')")
+    @Operation(
+        summary = "创建部门",
+        description = "需要内置管理员身份和 `$DEPARTMENT_WRITE` 权限。省略 parentId 或传 null 时创建根节点。",
+        responses = [
+            ApiResponse(responseCode = "201", description = "部门已创建", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "部门名称或父节点无效", content = [Content()]),
+            ApiResponse(responseCode = "403", description = "缺少所需权限或内置管理员身份", content = [Content()]),
+        ],
+    )
     fun create(@RequestBody request: DepartmentRequest): CreatedResource = departments.create(request)
 
     /**
@@ -81,5 +111,16 @@ class SystemDepartmentController(
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$DEPARTMENT_WRITE')")
+    @Operation(
+        summary = "更新部门",
+        description = "需要内置管理员身份和 `$DEPARTMENT_WRITE` 权限。可以调整父部门，父子关系须保持无环。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "部门 ID")],
+        responses = [
+            ApiResponse(responseCode = "204", description = "部门已更新", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "部门名称或父节点无效", content = [Content()]),
+            ApiResponse(responseCode = "403", description = "缺少所需权限或内置管理员身份", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "部门不存在", content = [Content()]),
+        ],
+    )
     fun update(@PathVariable id: String, @RequestBody request: DepartmentRequest) = departments.update(id, request)
 }

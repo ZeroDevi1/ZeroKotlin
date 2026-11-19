@@ -9,6 +9,12 @@ import dev.zerokotlin.system.dto.RoleSummary
 import dev.zerokotlin.system.dto.UpdateRoleRequest
 import dev.zerokotlin.system.security.ROLE_WRITE
 import dev.zerokotlin.system.service.SystemRoles
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -28,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/system/roles")
+@Tag(name = "角色管理")
 class SystemRoleController(private val roles: SystemRoles) {
     /**
      * 分页读取角色目录。
@@ -39,9 +46,17 @@ class SystemRoleController(private val roles: SystemRoles) {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('system:role:read')")
+    @Operation(
+        summary = "分页查询角色",
+        description = "需要 `system:role:read` 权限。可按启用状态筛选。",
+        responses = [ApiResponse(responseCode = "200", description = "角色分页", useReturnTypeSchema = true)],
+    )
     fun list(
+        @Parameter(description = "页码，从 1 开始")
         @RequestParam(defaultValue = "1") page: Int,
+        @Parameter(description = "每页条数，范围为 1–100")
         @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "为 true 时筛选启用角色，为 false 时筛选停用角色，省略时包含两类。")
         @RequestParam(required = false) enabled: Boolean?,
     ): PageResult<RoleSummary> = roles.list(PageWindow(page, size), enabled)
 
@@ -53,6 +68,15 @@ class SystemRoleController(private val roles: SystemRoles) {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('system:role:read')")
+    @Operation(
+        summary = "查询角色详情及权限点",
+        description = "需要 `system:role:read` 权限。内置管理员角色的权限点为系统中全部已启用的权限点。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "角色 ID")],
+        responses = [
+            ApiResponse(responseCode = "200", description = "角色详情和权限编码列表", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "404", description = "角色不存在", content = [Content()]),
+        ],
+    )
     fun detail(@PathVariable id: String): RoleDetails = roles.detail(id)
 
     /**
@@ -64,6 +88,16 @@ class SystemRoleController(private val roles: SystemRoles) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$ROLE_WRITE')")
+    @Operation(
+        summary = "创建业务角色",
+        description = "需要内置管理员身份和 `$ROLE_WRITE` 权限。可设置数据范围并关联已有权限点，内置管理员专用权限由系统管理。",
+        responses = [
+            ApiResponse(responseCode = "201", description = "角色已创建", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "角色字段或权限点集合无效", content = [Content()]),
+            ApiResponse(responseCode = "403", description = "缺少所需权限或内置管理员身份", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "角色编码已存在", content = [Content()]),
+        ],
+    )
     fun create(@RequestBody request: CreateRoleRequest): CreatedResource = roles.create(request)
 
     /**
@@ -75,5 +109,16 @@ class SystemRoleController(private val roles: SystemRoles) {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$ROLE_WRITE')")
+    @Operation(
+        summary = "更新业务角色及权限点",
+        description = "需要内置管理员身份和 `$ROLE_WRITE` 权限。提交完整的权限编码集合以替换现有关联。内置管理员角色由系统维护。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "角色 ID")],
+        responses = [
+            ApiResponse(responseCode = "204", description = "角色已更新", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "请求字段或权限点集合无效，或目标是内置管理员角色", content = [Content()]),
+            ApiResponse(responseCode = "403", description = "缺少所需权限或内置管理员身份", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "角色不存在", content = [Content()]),
+        ],
+    )
     fun update(@PathVariable id: String, @RequestBody request: UpdateRoleRequest) = roles.update(id, request)
 }

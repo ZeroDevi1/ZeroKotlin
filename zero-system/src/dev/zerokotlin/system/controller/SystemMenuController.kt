@@ -5,6 +5,12 @@ import dev.zerokotlin.system.dto.MenuNode
 import dev.zerokotlin.system.dto.MenuRequest
 import dev.zerokotlin.system.security.MENU_WRITE
 import dev.zerokotlin.system.service.SystemMenus
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/system/menus")
+@Tag(name = "菜单管理")
 class SystemMenuController(private val menus: SystemMenus) {
     /**
      * 读取管理用菜单树。
@@ -31,6 +38,11 @@ class SystemMenuController(private val menus: SystemMenus) {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('system:menu:read')")
+    @Operation(
+        summary = "获取完整菜单树",
+        description = "需要 `system:menu:read` 权限。包含已停用的菜单，同级节点按排序值和 ID 升序排列。",
+        responses = [ApiResponse(responseCode = "200", description = "完整菜单树", useReturnTypeSchema = true)],
+    )
     fun tree(): List<MenuNode> = menus.tree()
 
     /**
@@ -42,6 +54,14 @@ class SystemMenuController(private val menus: SystemMenus) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$MENU_WRITE')")
+    @Operation(
+        summary = "创建菜单",
+        description = "需要 `$MENU_WRITE` 权限。省略 parentId 或传 null 时创建根节点。可指定站内路径和已有权限点。",
+        responses = [
+            ApiResponse(responseCode = "201", description = "菜单已创建", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "菜单字段、父节点、路径或关联权限点无效", content = [Content()]),
+        ],
+    )
     fun create(@RequestBody request: MenuRequest): CreatedResource = menus.create(request)
 
     /**
@@ -53,5 +73,15 @@ class SystemMenuController(private val menus: SystemMenus) {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$MENU_WRITE')")
+    @Operation(
+        summary = "更新菜单",
+        description = "需要 `$MENU_WRITE` 权限。可调整菜单层级和启用状态，父子关系须保持无环。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "菜单 ID")],
+        responses = [
+            ApiResponse(responseCode = "204", description = "菜单已更新", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "菜单字段、父节点、路径或关联权限点无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "菜单不存在", content = [Content()]),
+        ],
+    )
     fun update(@PathVariable id: String, @RequestBody request: MenuRequest) = menus.update(id, request)
 }

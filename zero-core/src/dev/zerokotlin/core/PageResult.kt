@@ -1,5 +1,6 @@
 package dev.zerokotlin.core
 
+import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 
@@ -12,10 +13,15 @@ import org.springframework.web.server.ResponseStatusException
  * @property page 当前页码，从 1 开始。
  * @property size 请求的每页条数上限。
  */
+@Schema(description = "分页查询返回给调用方的数据和分页信息。")
 data class PageResult<T>(
+    @field:Schema(description = "当前页的记录。")
     val items: List<T>,
+    @field:Schema(description = "筛选后、分页前的记录总数。", minimum = "0")
     val total: Long,
+    @field:Schema(description = "当前页码，从 1 开始。", minimum = "1", example = "1")
     val page: Int,
+    @field:Schema(description = "请求的每页条数上限。", minimum = "1", maximum = "100", example = "20")
     val size: Int,
 )
 

@@ -8,6 +8,12 @@ import dev.zerokotlin.system.dto.DictionarySummary
 import dev.zerokotlin.system.dto.UpdateDictionaryRequest
 import dev.zerokotlin.system.security.DICTIONARY_WRITE
 import dev.zerokotlin.system.service.SystemDictionaries
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/system/dictionaries")
+@Tag(name = "字典管理")
 class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
     /**
      * 列出供管理界面使用的字典。
@@ -34,6 +41,11 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('system:dictionary:read')")
+    @Operation(
+        summary = "查询字典列表",
+        description = "需要 `system:dictionary:read` 权限。返回全部字典，包含已停用的字典，按字典编码升序排列。",
+        responses = [ApiResponse(responseCode = "200", description = "字典列表", useReturnTypeSchema = true)],
+    )
     fun list(): List<DictionarySummary> = dictionaries.list()
 
     /**
@@ -43,6 +55,16 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
      * @return 按排序值和 ID 升序排列的启用字典项。
      */
     @GetMapping("/by-code/{code}/items")
+    @Operation(
+        summary = "按字典编码查询启用的字典项",
+        description = "登录后可查询启用字典中的启用项，按排序值和 ID 升序排列。",
+        parameters = [Parameter(name = "code", `in` = ParameterIn.PATH, description = "字典编码")],
+        responses = [
+            ApiResponse(responseCode = "200", description = "已启用的字典项列表", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "字典编码格式无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典不存在或已停用", content = [Content()]),
+        ],
+    )
     fun values(@PathVariable code: String): List<DictionaryItem> = dictionaries.values(code)
 
     /**
@@ -53,6 +75,15 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
      */
     @GetMapping("/{id}/items")
     @PreAuthorize("hasAuthority('system:dictionary:read')")
+    @Operation(
+        summary = "按字典 ID 查询全部字典项",
+        description = "需要 `system:dictionary:read` 权限。包含已停用的字典项，按排序值和 ID 升序排列。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "字典 ID")],
+        responses = [
+            ApiResponse(responseCode = "200", description = "字典项列表", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "404", description = "字典不存在", content = [Content()]),
+        ],
+    )
     fun items(@PathVariable id: String): List<DictionaryItem> = dictionaries.items(id)
 
     /**
@@ -64,6 +95,15 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "创建字典",
+        description = "需要 `$DICTIONARY_WRITE` 权限。字典编码全局唯一，创建后固定。",
+        responses = [
+            ApiResponse(responseCode = "201", description = "字典已创建", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "字典编码或名称无效", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "字典编码已存在", content = [Content()]),
+        ],
+    )
     fun create(@RequestBody request: CreateDictionaryRequest): CreatedResource = dictionaries.create(request)
 
     /**
@@ -75,6 +115,16 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "更新字典名称和启用状态",
+        description = "需要 `$DICTIONARY_WRITE` 权限。停用后，按编码查询的接口将返回 404。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "字典 ID")],
+        responses = [
+            ApiResponse(responseCode = "204", description = "字典已更新", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "字典名称无效或缺少启用状态", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典不存在", content = [Content()]),
+        ],
+    )
     fun update(@PathVariable id: String, @RequestBody request: UpdateDictionaryRequest) = dictionaries.update(id, request)
 
     /**
@@ -87,6 +137,17 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
     @PostMapping("/{id}/items")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "创建字典项",
+        description = "需要 `$DICTIONARY_WRITE` 权限。项值在同一字典内唯一。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "所属字典 ID")],
+        responses = [
+            ApiResponse(responseCode = "201", description = "字典项已创建", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "字典项值或标签无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "同一字典中已存在相同的项值", content = [Content()]),
+        ],
+    )
     fun createItem(@PathVariable id: String, @RequestBody request: DictionaryItemRequest): CreatedResource =
         dictionaries.createItem(id, request)
 
@@ -100,8 +161,20 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
     @PutMapping("/{dictionaryId}/items/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "更新字典项",
+        description = "需要 `$DICTIONARY_WRITE` 权限。更新项值、标签、排序值和启用状态。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "字典项已更新", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "字典项值或标签无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典或该字典下的字典项不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "同一字典中已存在相同的项值", content = [Content()]),
+        ],
+    )
     fun updateItem(
+        @Parameter(description = "所属字典 ID")
         @PathVariable dictionaryId: String,
+        @Parameter(description = "字典项 ID")
         @PathVariable id: String,
         @RequestBody request: DictionaryItemRequest,
     ) = dictionaries.updateItem(dictionaryId, id, request)

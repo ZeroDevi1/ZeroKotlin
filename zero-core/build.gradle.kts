@@ -45,6 +45,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation(kotlin("reflect"))
+    api(libs.swagger.annotations)
     implementation(libs.springdoc.ui)
 
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")

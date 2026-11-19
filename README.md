@@ -59,6 +59,7 @@ pnpm dev
 | 场景 | 入口 |
 | --- | --- |
 | 选择数据库、配置 Redis、添加 MyBatis 或 JPA 访问层 | [数据源、迁移与缓存](docs/data.md) |
+| 用 Swagger UI 调试接口、获取 OpenAPI JSON 或 YAML、为新接口添加说明 | [Swagger UI 与 OpenAPI](docs/openapi.md) |
 | 调用登录、角色、部门、行级权限和审计接口 | [系统 API 和权限表](docs/system.md) |
 | 管理岗位和成员、发布或撤回公告、读取个人收件箱 | [岗位、公告和收件箱 API](docs/organization-notices.md) |
 | 添加可卸载模块、启用搜索或收发 Kafka 消息 | [扩展指南与请求示例](docs/extensions.md) |

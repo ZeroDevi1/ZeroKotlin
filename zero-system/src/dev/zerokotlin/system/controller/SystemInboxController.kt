@@ -4,6 +4,12 @@ import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.InboxEntry
 import dev.zerokotlin.system.service.SystemInbox
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -20,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/inbox")
+@Tag(name = "个人收件箱")
 class SystemInboxController(private val inbox: SystemInbox) {
     /**
      * 分页读取当前用户收件箱中的已发布公告。
@@ -30,9 +37,17 @@ class SystemInboxController(private val inbox: SystemInbox) {
      * @return 按发布时间倒序排列的公告页，各条目带当前用户的已读时间。
      */
     @GetMapping
+    @Operation(
+        summary = "分页查询个人收件箱",
+        description = "返回当前已发布的公告与当前用户的已读状态，按发布时间倒序排列。时间字段使用 Unix 毫秒。",
+        responses = [ApiResponse(responseCode = "200", description = "收件箱分页", useReturnTypeSchema = true)],
+    )
     fun list(
+        @Parameter(description = "页码，从 1 开始")
         @RequestParam(defaultValue = "1") page: Int,
+        @Parameter(description = "每页条数，范围为 1–100")
         @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "为 true 时仅返回未读公告，为 false 时包含已读和未读公告。")
         @RequestParam(defaultValue = "false") unreadOnly: Boolean,
     ): PageResult<InboxEntry> = inbox.list(PageWindow(page, size), unreadOnly)
 
@@ -43,5 +58,14 @@ class SystemInboxController(private val inbox: SystemInbox) {
      */
     @PutMapping("/{id}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+        summary = "将公告标为已读",
+        description = "仅记录当前用户的已读状态。重复调用保留首次已读时间。",
+        parameters = [Parameter(name = "id", `in` = ParameterIn.PATH, description = "公告 ID")],
+        responses = [
+            ApiResponse(responseCode = "204", description = "公告已标为已读", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "公告不存在或当前未处于发布状态", content = [Content()]),
+        ],
+    )
     fun markRead(@PathVariable id: String) = inbox.markRead(id)
 }
