@@ -2,8 +2,12 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Plus } from '@lucide/vue'
 import { request } from '@/api/client'
-import { adminRoleId, apiPath, codePattern, dataScopes, type DataScope, type PermissionSummary, type RoleDetails, type RoleSummary } from '@/api/system'
+import {
+  adminRoleId, apiPath, codePattern, dataScopes, flattenTree,
+  type DataScope, type MenuNode, type PermissionSummary, type RoleDetails, type RoleMenus, type RoleSummary,
+} from '@/api/system'
 import { useAuth } from '@/store/auth'
+import DeleteDialog from '@/components/DeleteDialog.vue'
 import EditDialog from '@/components/EditDialog.vue'
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
@@ -23,6 +27,21 @@ const draft = reactive({ code: '', name: '', dataScope: 'SELF' as DataScope, ena
 const draftTitle = computed(() => ({ create: '创建角色', edit: '编辑角色', detail: '角色详情' })[modal.value?.mode ?? 'detail'])
 const feedback = ref('')
 const { busy, error: saveError, run } = useAction()
+const selectedIds = ref<string[]>([])
+const removing = ref<{ ids: string[]; name?: string } | null>(null)
+watch(data, () => { selectedIds.value = [] })
+
+function openDelete(role?: RoleSummary) {
+  removing.value = role ? { ids: [role.id], name: role.name } : { ids: [...selectedIds.value] }
+}
+
+function deleted(ids: string[]) {
+  removing.value = null
+  feedback.value = `已删除 ${ids.length} 个角色。`
+  const lastPage = Math.max(1, Math.ceil((total.value - ids.length) / size.value))
+  if (page.value > lastPage) page.value = lastPage
+  else void reload()
+}
 
 const { data: detail, loading: detailLoading, error: detailError, reload: reloadDetail } = useResource<RoleDetails>(
   () => modal.value?.id ? apiPath(`/roles/${encodeURIComponent(modal.value.id)}`) : null,
@@ -71,6 +90,48 @@ async function save() {
   close()
   await reload()
 }
+
+const menuRole = ref<RoleSummary | null>(null)
+const menuDraft = reactive<RoleMenus>({ mode: 'LEGACY', menuIds: [] })
+const menuSave = useAction()
+const menuSettings = useResource<RoleMenus>(() =>
+  menuRole.value ? apiPath(`/roles/${encodeURIComponent(menuRole.value.id)}/menus`) : null,
+)
+const menuOptions = useResource<MenuNode[]>(() => menuRole.value ? apiPath('/menus') : null)
+const menuRows = computed(() => flattenTree(menuOptions.data.value ?? []))
+const menuLoading = computed(() => menuSettings.loading.value || menuOptions.loading.value)
+const menuError = computed(() => menuSettings.error.value || menuOptions.error.value)
+
+watch(menuSettings.data, (value) => {
+  if (value) Object.assign(menuDraft, { mode: value.mode, menuIds: [...value.menuIds] })
+})
+
+function openMenus(role: RoleSummary) {
+  menuSave.error.value = ''
+  menuRole.value = role
+}
+
+function retryMenus() {
+  if (menuSettings.error.value) void menuSettings.reload()
+  if (menuOptions.error.value) void menuOptions.reload()
+}
+
+async function saveMenus() {
+  const role = menuRole.value
+  if (!role) return
+  const completed = await menuSave.run(async () => {
+    if (menuDraft.mode === 'DIRECT' && menuDraft.menuIds.length > 256) {
+      throw new Error('一个角色最多可勾选 256 个菜单。')
+    }
+    await request(apiPath(`/roles/${encodeURIComponent(role.id)}/menus`), {
+      method: 'PUT',
+      body: { mode: menuDraft.mode, menuIds: menuDraft.mode === 'DIRECT' ? menuDraft.menuIds : [] },
+    })
+  })
+  if (!completed) return
+  feedback.value = '角色菜单已保存。'
+  menuRole.value = null
+}
 </script>
 
 <template>
@@ -89,13 +150,23 @@ async function save() {
           <option value="">全部状态</option><option value="true">启用</option><option value="false">停用</option>
         </select>
       </label>
+      <button v-if="mayWrite" class="btn" type="button" :disabled="!selectedIds.length || loading" @click="openDelete()">
+        删除选中<span v-if="selectedIds.length">（{{ selectedIds.length }}）</span>
+      </button>
     </div>
     <ListState :loading="loading" :error="error" :empty="!data?.items.length" empty-text="暂无符合条件的角色。" @retry="reload">
       <div class="table-wrap">
         <table class="data-table" aria-label="角色列表">
-          <thead><tr><th scope="col">角色</th><th scope="col">数据范围</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+          <thead><tr>
+            <th v-if="mayWrite" scope="col"><span class="sr-only">选择角色</span></th>
+            <th scope="col">角色</th><th scope="col">数据范围</th><th scope="col">状态</th><th scope="col">操作</th>
+          </tr></thead>
           <tbody>
             <tr v-for="role in data?.items" :key="role.id">
+              <td v-if="mayWrite">
+                <input v-if="role.id !== adminRoleId" v-model="selectedIds" type="checkbox" :value="role.id"
+                  :aria-label="`选择角色 ${role.name}`">
+              </td>
               <td><strong>{{ role.name }}</strong><code class="cell-meta">{{ role.code }}</code></td>
               <td>{{ dataScopes[role.dataScope] }}</td>
               <td><StatusChip :enabled="role.enabled" /></td>
@@ -103,6 +174,10 @@ async function save() {
                 <button class="btn btn-quiet" type="button" @click="open('detail', role.id)">详情</button>
                 <button v-if="mayWrite && role.id !== adminRoleId" class="btn btn-quiet" type="button"
                   @click="open('edit', role.id)">编辑</button>
+                <button v-if="mayWrite && role.id !== adminRoleId && auth.can('system:menu:read')" class="btn btn-quiet"
+                  type="button" @click="openMenus(role)">分配菜单</button>
+                <button v-if="mayWrite && role.id !== adminRoleId" class="btn btn-quiet" type="button"
+                  @click="openDelete(role)">删除</button>
               </div></td>
             </tr>
           </tbody>
@@ -163,4 +238,41 @@ async function save() {
       </div>
     </form>
   </EditDialog>
+
+  <EditDialog v-if="menuRole" :title="`分配菜单 · ${menuRole.name}`" :busy="menuSave.busy.value" @close="menuRole = null">
+    <ListState :loading="menuLoading" :error="menuError" @retry="retryMenus">
+      <form v-if="menuSettings.data.value && menuOptions.data.value" @submit.prevent="saveMenus">
+        <label class="field">
+          <span>菜单模式</span>
+          <select v-model="menuDraft.mode">
+            <option value="LEGACY">沿用权限点规则</option>
+            <option value="DIRECT">按勾选限制可见菜单</option>
+          </select>
+        </label>
+        <fieldset v-if="menuDraft.mode === 'DIRECT'" class="choice-group">
+          <legend>可见菜单</legend>
+          <p class="muted">逐项勾选菜单。用户须拥有菜单和页面所需权限。同一用户的直接菜单取各启用角色的勾选并集。</p>
+          <div class="option-list">
+            <label v-for="{ node, trail } in menuRows" :key="node.id" class="checkline">
+              <input v-model="menuDraft.menuIds" type="checkbox" :value="node.id">
+              <span>{{ trail }}{{ node.enabled ? '' : '（停用）' }}
+                <code v-if="node.permissionCode" class="cell-meta">{{ node.permissionCode }}</code>
+              </span>
+            </label>
+            <span v-if="!menuRows.length" class="muted">暂无可分配的菜单。</span>
+          </div>
+        </fieldset>
+        <p v-if="menuSave.error.value" class="notice notice-error" role="alert">{{ menuSave.error.value }}</p>
+        <div class="form-actions">
+          <button class="btn" type="button" :disabled="menuSave.busy.value" @click="menuRole = null">取消</button>
+          <button class="btn btn-primary" type="submit" :disabled="menuSave.busy.value">
+            {{ menuSave.busy.value ? '保存中…' : '保存菜单' }}
+          </button>
+        </div>
+      </form>
+    </ListState>
+  </EditDialog>
+
+  <DeleteDialog v-if="removing" collection="/roles" resource="角色" :ids="removing.ids" :name="removing.name"
+    description="删除前须解除该角色与所有账号的关联。" @close="removing = null" @deleted="deleted" />
 </template>

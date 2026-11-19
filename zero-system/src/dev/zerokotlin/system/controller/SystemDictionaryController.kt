@@ -2,6 +2,8 @@ package dev.zerokotlin.system.controller
 
 import dev.zerokotlin.system.dto.CreateDictionaryRequest
 import dev.zerokotlin.system.dto.CreatedResource
+import dev.zerokotlin.system.dto.DeleteResourcesRequest
+import dev.zerokotlin.system.dto.DictionaryCodesRequest
 import dev.zerokotlin.system.dto.DictionaryItem
 import dev.zerokotlin.system.dto.DictionaryItemRequest
 import dev.zerokotlin.system.dto.DictionarySummary
@@ -16,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -66,6 +69,19 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
         ],
     )
     fun values(@PathVariable code: String): List<DictionaryItem> = dictionaries.values(code)
+
+    /** 批量查询多个启用字典中的启用选项。 */
+    @PostMapping("/by-codes/items")
+    @Operation(
+        summary = "按多个字典编码查询启用的字典项",
+        description = "登录后可批量查询。结果按编码分组，缺失或停用的字典省略，启用但无可用字典项时返回空数组。",
+        responses = [
+            ApiResponse(responseCode = "200", description = "按字典编码分组的选项", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "编码数量或格式无效", content = [Content()]),
+        ],
+    )
+    fun valuesByCodes(@RequestBody request: DictionaryCodesRequest): Map<String, List<DictionaryItem>> =
+        dictionaries.valuesByCodes(request.codes)
 
     /**
      * 查询一个字典的管理明细。
@@ -178,4 +194,66 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
         @PathVariable id: String,
         @RequestBody request: DictionaryItemRequest,
     ) = dictionaries.updateItem(dictionaryId, id, request)
+
+    /** 删除单个没有字典项的字典。 */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "删除字典",
+        description = "需要内置管理员身份和 `$DICTIONARY_WRITE` 权限。删除前须清空字典项。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "字典已删除", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "字典仍包含字典项", content = [Content()]),
+        ],
+    )
+    fun delete(@PathVariable id: String) = dictionaries.delete(listOf(id))
+
+    /** 原子删除多个没有字典项的字典。 */
+    @PostMapping("/batch-delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "批量删除字典",
+        description = "需要内置管理员身份和 `$DICTIONARY_WRITE` 权限。任一字典无法删除时整批回滚。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "指定字典均已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "ID 列表无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "有字典不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "有字典仍包含字典项", content = [Content()]),
+        ],
+    )
+    fun deleteBatch(@RequestBody request: DeleteResourcesRequest) = dictionaries.delete(request.ids)
+
+    /** 删除指定字典中的一个选项。 */
+    @DeleteMapping("/{dictionaryId}/items/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "删除字典项",
+        description = "需要内置管理员身份和 `$DICTIONARY_WRITE` 权限。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "字典项已删除", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典或该字典下的指定字典项不存在", content = [Content()]),
+        ],
+    )
+    fun deleteItem(@PathVariable dictionaryId: String, @PathVariable id: String) =
+        dictionaries.deleteItems(dictionaryId, listOf(id))
+
+    /** 原子删除指定字典中的多个选项。 */
+    @PostMapping("/{dictionaryId}/items/batch-delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$DICTIONARY_WRITE')")
+    @Operation(
+        summary = "批量删除字典项",
+        description = "需要内置管理员身份和 `$DICTIONARY_WRITE` 权限。字典项须属于同一个字典，任一项无法删除时整批回滚。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "指定字典项均已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "ID 列表无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "字典不存在或有字典项不属于该字典", content = [Content()]),
+        ],
+    )
+    fun deleteItemBatch(@PathVariable dictionaryId: String, @RequestBody request: DeleteResourcesRequest) =
+        dictionaries.deleteItems(dictionaryId, request.ids)
 }

@@ -8,6 +8,9 @@ import dev.zerokotlin.core.security.hashPassword
 import dev.zerokotlin.system.dto.AssignedRole
 import dev.zerokotlin.system.dto.CreateUserRequest
 import dev.zerokotlin.system.dto.CreatedResource
+import dev.zerokotlin.system.dto.OwnProfile
+import dev.zerokotlin.system.dto.OwnProfileRequest
+import dev.zerokotlin.system.dto.ResetPasswordRequest
 import dev.zerokotlin.system.dto.UserAccountRequest
 import dev.zerokotlin.system.dto.UserDetails
 import dev.zerokotlin.system.dto.UserListEntry
@@ -15,7 +18,6 @@ import dev.zerokotlin.system.dto.UserProfileRequest
 import dev.zerokotlin.system.dto.UserQuery
 import dev.zerokotlin.system.dto.UserRow
 import dev.zerokotlin.system.dto.UserSummary
-import dev.zerokotlin.system.entity.SessionRecord
 import dev.zerokotlin.system.entity.UserRecord
 import dev.zerokotlin.system.mapper.DepartmentMapper
 import dev.zerokotlin.system.mapper.RoleMapper
@@ -31,6 +33,7 @@ import dev.zerokotlin.system.security.currentSystemActor
 import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
 import dev.zerokotlin.system.support.ExcelImportRow
 import dev.zerokotlin.system.support.atExcelRow
+import dev.zerokotlin.system.support.checkedDeleteIds
 import dev.zerokotlin.system.support.checkedPassword
 import dev.zerokotlin.system.support.checkedPlainText
 import dev.zerokotlin.system.support.conflict
@@ -51,6 +54,15 @@ import org.springframework.transaction.annotation.Transactional
  * @return 含身份资料、直属部门及布尔启用状态的用户摘要。
  */
 private fun UserRow.summary() = UserSummary(id, username, displayName, departmentId, enabled == 1)
+
+/** 仅输出本人可见的基本资料。 */
+private fun UserRecord.ownProfile() = OwnProfile(username, displayName, email, mobile)
+
+/** 简单联系邮箱格式，允许常见邮箱字符及带点的域名。 */
+private val emailPattern = Regex("[^\\s@]+@[^\\s@.]+(?:\\.[^\\s@.]+)+")
+
+/** 允许纯数字手机号和带国际前缀的号码。 */
+private val mobilePattern = Regex("\\+?[0-9]{6,15}")
 
 /**
  * 按权限对应的数据范围读取用户、更新资料，并维护账号及角色分配。
@@ -119,6 +131,35 @@ class SystemUsers(
     fun detail(id: String): UserDetails {
         val user = visibleUser(id, currentSystemActor(), USER_READ)
         return UserDetails(user.summary(), relations.findUserRoleIds(user.id))
+    }
+
+    /** 读取当前已认证账号的个人资料。 */
+    fun ownProfile(): OwnProfile = (users.selectById(currentSystemActor().user.id) ?: missing("用户")).ownProfile()
+
+    /**
+     * 在写入锁下重新认证并保存本人资料。可选联系方式为空时清除。
+     *
+     * @param request 完整的显示名称和可选联系方式。
+     * @return 更新后的个人资料。
+     */
+    @Transactional
+    fun updateOwnProfile(request: OwnProfileRequest): OwnProfile {
+        val displayName = plainText.checkedPlainText(request.displayName, "displayName")
+        val email = request.email?.trim()?.takeIf { it.isNotEmpty() }
+        val mobile = request.mobile?.trim()?.takeIf { it.isNotEmpty() }
+        if (email != null && (email.length > 254 || email.any { Character.isISOControl(it) } || !emailPattern.matches(email))) {
+            invalid("邮箱格式无效或超过 254 字符")
+        }
+        if (mobile != null && !mobilePattern.matches(mobile)) invalid("手机号须为 6 至 15 位数字，可带国际前缀 +")
+        val actor = writes.lockAndAuthenticate()
+        val user = actor.user
+        users.update(
+            null,
+            UpdateWrapper<UserRecord>().eq("id", user.id)
+                .set("display_name", displayName).set("email", email).set("mobile", mobile),
+        )
+        writes.record(actor, "auth.profile.update", user.id)
+        return OwnProfile(user.username, displayName, email, mobile)
     }
 
     /**
@@ -216,9 +257,49 @@ class SystemUsers(
         users.updateById(user)
         setRoles(user.id, request.roleIds)
         if (enabled == 0 || passwordHash != null) {
-            sessions.delete(query<SessionRecord>().eq("user_id", user.id))
+            sessions.revokeForUser(user.id)
         }
         writes.record(actor, "user.account.update", user.id)
+    }
+
+    /**
+     * 由内置管理员重置目标账号的密码，并在同一事务撤销该账号的全部会话。
+     *
+     * @param id 待重置的用户 ID。
+     * @param request 新密码。
+     */
+    @Transactional
+    fun resetPassword(id: String, request: ResetPasswordRequest) {
+        val hash = passwords.hashPassword(checkedPassword(request.newPassword))
+        val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
+        val user = visibleUser(id, actor, USER_MANAGE)
+        users.updatePassword(user.id, hash)
+        sessions.revokeForUser(user.id)
+        writes.record(actor, "user.password.reset", user.id)
+    }
+
+    /**
+     * 原子删除业务账号、会话和账号所属关联，保留历史审计。内置管理员账号受保护。
+     *
+     * @param ids 要删除的用户 ID。
+     */
+    @Transactional
+    fun delete(ids: List<String?>) {
+        val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
+        val targets = checkedDeleteIds(ids)
+        for (id in targets) {
+            val user = visibleUser(id, actor, USER_MANAGE)
+            if (user.id != id) missing("用户")
+            if (ADMIN_ROLE_ID in relations.findUserRoleIds(id)) invalid("内置管理员账号由系统维护")
+        }
+        for (id in targets) {
+            sessions.revokeForUser(id)
+            relations.deleteUserRoles(id)
+            relations.deleteUserPositions(id)
+            relations.deleteUserAnnouncementReads(id)
+            if (users.deleteById(id) != 1) missing("用户")
+            writes.record(actor, "user.delete", id)
+        }
     }
 
     /**

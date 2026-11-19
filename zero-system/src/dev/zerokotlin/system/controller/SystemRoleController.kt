@@ -4,7 +4,10 @@ import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.CreateRoleRequest
 import dev.zerokotlin.system.dto.CreatedResource
+import dev.zerokotlin.system.dto.DeleteResourcesRequest
 import dev.zerokotlin.system.dto.RoleDetails
+import dev.zerokotlin.system.dto.RoleMenus
+import dev.zerokotlin.system.dto.RoleMenusRequest
 import dev.zerokotlin.system.dto.RoleSummary
 import dev.zerokotlin.system.dto.UpdateRoleRequest
 import dev.zerokotlin.system.security.ROLE_WRITE
@@ -17,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -121,4 +125,65 @@ class SystemRoleController(private val roles: SystemRoles) {
         ],
     )
     fun update(@PathVariable id: String, @RequestBody request: UpdateRoleRequest) = roles.update(id, request)
+
+    /** 读取业务角色已保存的菜单模式和勾选项。 */
+    @GetMapping("/{id}/menus")
+    @PreAuthorize("hasAuthority('system:role:read')")
+    @Operation(
+        summary = "查看角色菜单配置",
+        description = "需要 `system:role:read` 权限。返回业务角色的菜单模式及直接分配的菜单 ID。",
+        responses = [
+            ApiResponse(responseCode = "200", description = "角色菜单配置", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "内置管理员角色由系统维护", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "角色不存在", content = [Content()]),
+        ],
+    )
+    fun menus(@PathVariable id: String): RoleMenus = roles.menuSettings(id)
+
+    /** 整体替换业务角色的直接菜单分配。 */
+    @PutMapping("/{id}/menus")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$ROLE_WRITE')")
+    @Operation(
+        summary = "保存角色菜单配置",
+        description = "需要内置管理员身份和 `$ROLE_WRITE` 权限。直接勾选用于筛选导航，原有权限点继续生效。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "菜单配置已保存", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "菜单配置无效或目标为内置管理员角色", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "角色不存在", content = [Content()]),
+        ],
+    )
+    fun updateMenus(@PathVariable id: String, @RequestBody request: RoleMenusRequest) = roles.updateMenus(id, request)
+
+    /** 删除未分配给用户的单个业务角色。 */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$ROLE_WRITE')")
+    @Operation(
+        summary = "删除业务角色",
+        description = "需要内置管理员身份和 `$ROLE_WRITE` 权限。角色不能已分配给用户。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "角色已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "角色 ID 无效或目标为内置管理员角色", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "角色不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "角色仍分配给用户", content = [Content()]),
+        ],
+    )
+    fun delete(@PathVariable id: String) = roles.delete(listOf(id))
+
+    /** 原子删除未分配给用户的业务角色。 */
+    @PostMapping("/batch-delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$ROLE_WRITE')")
+    @Operation(
+        summary = "批量删除业务角色",
+        description = "需要内置管理员身份和 `$ROLE_WRITE` 权限。任一角色无法删除时整批回滚。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "指定角色均已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "ID 列表无效或含内置管理员角色", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "有角色不存在", content = [Content()]),
+            ApiResponse(responseCode = "409", description = "有角色仍分配给用户", content = [Content()]),
+        ],
+    )
+    fun deleteBatch(@RequestBody request: DeleteResourcesRequest) = roles.delete(request.ids)
 }

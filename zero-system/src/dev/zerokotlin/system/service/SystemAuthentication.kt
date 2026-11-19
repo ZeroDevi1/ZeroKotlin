@@ -2,6 +2,7 @@ package dev.zerokotlin.system.service
 
 import dev.zerokotlin.core.security.BearerTokens
 import dev.zerokotlin.core.security.hashPassword
+import dev.zerokotlin.system.dto.ChangePasswordRequest
 import dev.zerokotlin.system.dto.LoginRequest
 import dev.zerokotlin.system.dto.LoginResponse
 import dev.zerokotlin.system.entity.LoginAuditRecord
@@ -12,6 +13,9 @@ import dev.zerokotlin.system.mapper.SessionMapper
 import dev.zerokotlin.system.mapper.UserMapper
 import dev.zerokotlin.system.security.currentSystemActor
 import dev.zerokotlin.system.support.acceptableLoginPassword
+import dev.zerokotlin.system.support.checkedPassword
+import dev.zerokotlin.system.support.invalid
+import dev.zerokotlin.system.support.missing
 import dev.zerokotlin.system.support.newId
 import dev.zerokotlin.system.support.normalizeUsername
 import dev.zerokotlin.system.support.query
@@ -68,6 +72,20 @@ class SystemAuthentication(
     private fun recordFailure(userId: String?, username: String?, address: String) {
         loginAudit.insert(LoginAuditRecord(newId(), userId, username, 0, address, System.currentTimeMillis()))
     }
+
+    /**
+     * 用当前会话身份查找账号并校验旧密码。在取得写入锁前完成密码比对和哈希计算。
+     *
+     * @param request 当前密码和符合账号密码规则的新密码。
+     */
+    fun changePassword(request: ChangePasswordRequest) {
+        val newPassword = checkedPassword(request.newPassword)
+        val user = users.selectById(currentSystemActor().user.id) ?: missing("用户")
+        if (!acceptableLoginPassword(request.oldPassword) || !passwords.matches(request.oldPassword, user.passwordHash)) {
+            invalid("旧密码不正确")
+        }
+        transactions.changePassword(user, passwords.hashPassword(newPassword))
+    }
 }
 
 /**
@@ -111,6 +129,22 @@ class SystemSessionTransactions(
         sessions.insert(SessionRecord(BearerTokens.digest(token), user.id, expiresAt))
         loginAudit.insert(LoginAuditRecord(newId(), user.id, user.username, 1, address, now))
         return LoginResponse(token, "Bearer", expiresAt)
+    }
+
+    /**
+     * 在写入锁下重新认证，确认密码仍与已经验证的快照一致，再更新密码、撤销会话和记录审计。
+     *
+     * @param verifiedUser 旧密码已通过校验的账号快照。
+     * @param newHash 新密码的哈希。
+     */
+    @Transactional
+    fun changePassword(verifiedUser: UserRecord, newHash: String) {
+        val actor = writes.lockAndAuthenticate()
+        val user = users.selectById(actor.user.id) ?: missing("用户")
+        if (user.id != verifiedUser.id || user.passwordHash != verifiedUser.passwordHash) invalid("旧密码不正确")
+        users.updatePassword(user.id, newHash)
+        sessions.revokeForUser(user.id)
+        writes.record(actor, "auth.password.change", user.id)
     }
 
     /** 注销当前会话，只有实际删除会话记录时才写入审计。 */

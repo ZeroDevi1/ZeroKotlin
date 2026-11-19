@@ -5,6 +5,7 @@ import dev.zerokotlin.system.dto.AssignedRoleRow
 import dev.zerokotlin.system.dto.AuthorityRow
 import dev.zerokotlin.system.dto.InboxEntry
 import dev.zerokotlin.system.dto.RealtimeMessage
+import dev.zerokotlin.system.dto.RoleMenuRow
 import dev.zerokotlin.system.dto.UserQuery
 import dev.zerokotlin.system.dto.UserRow
 import dev.zerokotlin.system.entity.AnnouncementRecord
@@ -41,6 +42,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
         hints.resources().registerPattern("db/migration/common/V1__system.sql")
         hints.resources().registerPattern("db/migration/common/V2__positions_and_announcements.sql")
         hints.resources().registerPattern("db/migration/common/V6__scheduled_jobs.sql")
+        hints.resources().registerPattern("db/migration/common/V7__account_and_role_menus.sql")
         listOf(
             UserRecord::class.java,
             DepartmentRecord::class.java,
@@ -60,6 +62,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             UserRow::class.java,
             AuthorityRow::class.java,
             AssignedRoleRow::class.java,
+            RoleMenuRow::class.java,
             InboxEntry::class.java,
             RealtimeMessage::class.java,
             PageWindow::class.java,

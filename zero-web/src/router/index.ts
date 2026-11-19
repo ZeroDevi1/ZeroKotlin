@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { refreshSession, session, useAuth } from '@/store/auth'
-import { findNavigation, getNavigation, inbox, menuPages } from '@/router/navigation'
+import { findNavigation, getNavigation, inbox, menuPages, personalPages } from '@/router/navigation'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -23,10 +23,10 @@ export const router = createRouter({
     { path: '/login', component: () => import('@/views/LoginView.vue').then((module) => module.default), meta: { title: '登录' } },
     { path: '/session', component: () => import('@/views/SessionView.vue').then((module) => module.default), meta: { title: '连接会话' } },
     { path: '/', component: { render: () => null }, meta: { private: true } },
-    ...[inbox, ...menuPages].map((page) => ({
+    ...[...personalPages, ...menuPages].map((page) => ({
       path: page.path,
       component: () => page.view().then((module) => module.default),
-      meta: { private: true, menu: page !== inbox, title: page.label },
+      meta: { private: true, menu: menuPages.includes(page), title: page.label },
     })),
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
@@ -57,7 +57,7 @@ router.afterEach((to) => {
 export function destination(next: unknown) {
   if (typeof next === 'string' && /^\/(?!\/)[^\\\u0000-\u001f\u007f]*$/.test(next)) {
     const route = router.resolve(next)
-    if (route.path === inbox.path || findNavigation(navigation.value, route.path)) return route.fullPath
+    if (personalPages.some((page) => page.path === route.path) || findNavigation(navigation.value, route.path)) return route.fullPath
   }
   return home()
 }

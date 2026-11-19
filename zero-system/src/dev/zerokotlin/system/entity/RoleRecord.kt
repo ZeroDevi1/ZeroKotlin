@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.annotation.TableName
  * @property name 角色的显示名称。
  * @property dataScope 角色授予权限时适用的 [DataScope] 枚举名，默认 `SELF`。
  * @property enabled 启用标志，`1` 表示参与有效授权计算，`0` 表示停用。
+ * @property directMenus 菜单可见性模式，`1` 表示显式配置，`0` 表示沿用权限点规则。
  */
 @TableName("sys_role")
 class RoleRecord(
@@ -21,4 +22,5 @@ class RoleRecord(
     var name: String = "",
     var dataScope: String = DataScope.SELF.name,
     var enabled: Int = 1,
+    var directMenus: Int = 0,
 )

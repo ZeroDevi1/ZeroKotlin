@@ -1,4 +1,5 @@
 import {
+  UserRound,
   CalendarClock,
   MessageCircle,
   FolderOpen,
@@ -21,6 +22,11 @@ export const inbox: Page = {
   icon: Inbox,
   view: () => import('@/views/InboxView.vue'),
 }
+
+export const personalPages: Page[] = [
+  inbox,
+  { path: '/profile', label: '个人中心', icon: UserRound, view: () => import('@/views/ProfileView.vue') },
+]
 
 const systemPages: Page[] = [
   { path: '/users', label: '用户', icon: Users, authority: 'system:user:read', view: () => import('@/views/UsersView.vue') },

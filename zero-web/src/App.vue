@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router'
 import { session, signOut, useAuth } from '@/store/auth'
 import BrandMark from '@/components/BrandMark.vue'
 import NavBranch from '@/layouts/NavBranch.vue'
-import { findNavigation, inbox } from '@/router/navigation'
+import { findNavigation, inbox, personalPages } from '@/router/navigation'
 import { navigation, router } from '@/router'
 
 const auth = useAuth()
@@ -83,8 +83,8 @@ async function logout() {
       <div class="sidebar-brand"><BrandMark /></div>
       <nav aria-label="工作台导航" @click="navigate">
         <div class="nav-label">个人</div>
-        <RouterLink :to="inbox.path" class="nav-link">
-          <component :is="inbox.icon" :size="17" aria-hidden="true" /> {{ inbox.label }}
+        <RouterLink v-for="page in personalPages" :key="page.path" :to="page.path" class="nav-link">
+          <component :is="page.icon" :size="17" aria-hidden="true" /> {{ page.label }}
         </RouterLink>
         <NavBranch v-if="navigation.length" :items="navigation" class="system-navigation" />
       </nav>

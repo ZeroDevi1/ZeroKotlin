@@ -4,6 +4,8 @@ import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.CreateUserRequest
 import dev.zerokotlin.system.dto.CreatedResource
+import dev.zerokotlin.system.dto.DeleteResourcesRequest
+import dev.zerokotlin.system.dto.ResetPasswordRequest
 import dev.zerokotlin.system.dto.UserAccountRequest
 import dev.zerokotlin.system.dto.UserDetails
 import dev.zerokotlin.system.dto.UserListEntry
@@ -21,6 +23,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -154,4 +157,50 @@ class SystemUserController(private val users: SystemUsers) {
     )
     fun updateAccount(@PathVariable id: String, @RequestBody request: UserAccountRequest) =
         users.updateAccount(id, request)
+
+    /** 由内置管理员独立重置指定账号的密码。 */
+    @PutMapping("/{id}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$USER_MANAGE')")
+    @Operation(
+        summary = "重置用户密码",
+        description = "需要内置管理员身份和 `$USER_MANAGE` 权限。只更新密码并撤销该账号的全部会话。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "密码已重置", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "新密码格式无效", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "用户不存在", content = [Content()]),
+        ],
+    )
+    fun resetPassword(@PathVariable id: String, @RequestBody request: ResetPasswordRequest) =
+        users.resetPassword(id, request)
+
+    /** 删除单个业务账号及其会话和关联。 */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$USER_MANAGE')")
+    @Operation(
+        summary = "删除用户",
+        description = "需要内置管理员身份和 `$USER_MANAGE` 权限。撤销会话、清除角色、岗位及公告已读关联，保留审计。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "用户已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "用户 ID 无效或目标为内置管理员", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "用户不存在", content = [Content()]),
+        ],
+    )
+    fun delete(@PathVariable id: String) = users.delete(listOf(id))
+
+    /** 在一个事务中删除全部指定业务账号。 */
+    @PostMapping("/batch-delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('$USER_MANAGE')")
+    @Operation(
+        summary = "批量删除用户",
+        description = "需要内置管理员身份和 `$USER_MANAGE` 权限。任一账号无法删除时整批回滚。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "指定用户均已删除", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "ID 列表无效或含内置管理员", content = [Content()]),
+            ApiResponse(responseCode = "404", description = "有用户不存在", content = [Content()]),
+        ],
+    )
+    fun deleteBatch(@RequestBody request: DeleteResourcesRequest) = users.delete(request.ids)
 }

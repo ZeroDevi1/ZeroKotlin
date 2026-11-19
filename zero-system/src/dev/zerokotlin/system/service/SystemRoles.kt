@@ -7,11 +7,15 @@ import dev.zerokotlin.system.dto.CreateRoleRequest
 import dev.zerokotlin.system.dto.CreatedResource
 import dev.zerokotlin.system.dto.PermissionSummary
 import dev.zerokotlin.system.dto.RoleDetails
+import dev.zerokotlin.system.dto.RoleMenuMode
+import dev.zerokotlin.system.dto.RoleMenus
+import dev.zerokotlin.system.dto.RoleMenusRequest
 import dev.zerokotlin.system.dto.RoleSummary
 import dev.zerokotlin.system.dto.UpdatePermissionRequest
 import dev.zerokotlin.system.dto.UpdateRoleRequest
 import dev.zerokotlin.system.entity.PermissionRecord
 import dev.zerokotlin.system.entity.RoleRecord
+import dev.zerokotlin.system.mapper.MenuMapper
 import dev.zerokotlin.system.mapper.PermissionMapper
 import dev.zerokotlin.system.mapper.RoleMapper
 import dev.zerokotlin.system.mapper.SystemRelationMapper
@@ -22,6 +26,7 @@ import dev.zerokotlin.system.security.POSITION_WRITE
 import dev.zerokotlin.system.security.ROLE_WRITE
 import dev.zerokotlin.system.security.USER_MANAGE
 import dev.zerokotlin.system.support.checkedCode
+import dev.zerokotlin.system.support.checkedDeleteIds
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
 import dev.zerokotlin.system.support.flag
@@ -57,13 +62,15 @@ private fun PermissionRecord.summary() = PermissionSummary(code, name, enabled =
  *
  * @property roles 读写角色资料及数据范围。
  * @property permissions 查询权限目录并检查分配的权限点是否存在。
- * @property relations 查询和替换角色的权限关联。
+ * @property menus 检查直接分配的菜单是否存在。
+ * @property relations 查询和替换角色的权限、菜单关联。
  * @property writes 串行化写入，在同一事务中校验写入者并记录审计。
  */
 @Service
 class SystemRoles(
     private val roles: RoleMapper,
     private val permissions: PermissionMapper,
+    private val menus: MenuMapper,
     private val relations: SystemRelationMapper,
     private val writes: SystemWrites,
 ) {
@@ -127,8 +134,7 @@ class SystemRoles(
     @Transactional
     fun update(id: String, request: UpdateRoleRequest) {
         val actor = writes.authorize(ROLE_WRITE, administratorOnly = true)
-        val role = roles.selectById(id) ?: missing("角色")
-        if (role.id == ADMIN_ROLE_ID) invalid("内置管理员角色由系统维护")
+        val role = businessRole(id)
         validatePermissions(request.permissionCodes)
 
         role.name = checkedText(request.name, "name")
@@ -137,6 +143,63 @@ class SystemRoles(
         roles.updateById(role)
         replacePermissions(role.id, request.permissionCodes)
         writes.record(actor, "role.update", role.id)
+    }
+
+    /** 查询业务角色已保存的菜单模式和勾选项。 */
+    @Transactional(readOnly = true)
+    fun menuSettings(id: String): RoleMenus {
+        val rows = relations.findRoleMenuSettings(id)
+        val role = rows.firstOrNull()?.takeIf { it.roleId == id } ?: missing("角色")
+        if (role.roleId == ADMIN_ROLE_ID) invalid("内置管理员角色由系统维护")
+        val mode = if (role.directMenus == 1) RoleMenuMode.DIRECT else RoleMenuMode.LEGACY
+        return RoleMenus(mode, rows.mapNotNull { it.menuId })
+    }
+
+    /**
+     * 由内置管理员原子替换角色的直接菜单配置。勾选仅影响导航可见性。
+     *
+     * @param id 目标业务角色 ID。
+     * @param request 菜单模式和完整的直接分配集合。
+     */
+    @Transactional
+    fun updateMenus(id: String, request: RoleMenusRequest) {
+        val actor = writes.authorize(ROLE_WRITE, administratorOnly = true)
+        val role = businessRole(id)
+        val direct = request.mode == RoleMenuMode.DIRECT
+        val ids = request.menuIds
+        if (!direct && ids.isNotEmpty()) invalid("沿用权限点规则时须清空直接菜单")
+        if (ids.size > 256) invalid("单个角色最多直接分配 256 个菜单")
+        if (ids.isNotEmpty() && menus.selectByIds(ids).map { it.id }.toSet() != ids) invalid("菜单不存在")
+
+        role.directMenus = direct.flag()
+        roles.updateById(role)
+        relations.deleteRoleMenus(role.id)
+        ids.forEach { relations.insertRoleMenu(role.id, it) }
+        writes.record(actor, "role.menus.update", role.id)
+    }
+
+    /** 原子删除未分配给任何用户的业务角色，并清除其权限及菜单关联。 */
+    @Transactional
+    fun delete(ids: List<String?>) {
+        val actor = writes.authorize(ROLE_WRITE, administratorOnly = true)
+        val targets = checkedDeleteIds(ids)
+        for (id in targets) {
+            val role = businessRole(id)
+            if (relations.countRoleUsers(role.id) != 0L) conflict("角色 ${role.code} 仍分配给用户")
+        }
+        for (id in targets) {
+            relations.deleteRolePermissions(id)
+            relations.deleteRoleMenus(id)
+            if (roles.deleteById(id) != 1) missing("角色")
+            writes.record(actor, "role.delete", id)
+        }
+    }
+
+    /** 查找可维护的业务角色，保护内置系统管理员角色。 */
+    private fun businessRole(id: String): RoleRecord {
+        val role = roles.selectById(id)?.takeIf { it.id == id } ?: missing("角色")
+        if (role.id == ADMIN_ROLE_ID) invalid("内置管理员角色由系统维护")
+        return role
     }
 
     /**

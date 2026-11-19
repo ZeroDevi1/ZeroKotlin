@@ -1,16 +1,20 @@
 package dev.zerokotlin.system.controller
 
 import dev.zerokotlin.core.security.ApiRateLimit
+import dev.zerokotlin.system.dto.ChangePasswordRequest
 import dev.zerokotlin.system.dto.CurrentUserResponse
 import dev.zerokotlin.system.dto.LoginCaptcha
 import dev.zerokotlin.system.dto.LoginRequest
 import dev.zerokotlin.system.dto.LoginResponse
 import dev.zerokotlin.system.dto.MenuNode
+import dev.zerokotlin.system.dto.OwnProfile
+import dev.zerokotlin.system.dto.OwnProfileRequest
 import dev.zerokotlin.system.security.currentSystemActor
 import dev.zerokotlin.system.service.SystemAuthentication
 import dev.zerokotlin.system.service.SystemLoginCaptcha
 import dev.zerokotlin.system.service.SystemMenus
 import dev.zerokotlin.system.service.SystemSessionTransactions
+import dev.zerokotlin.system.service.SystemUsers
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content
@@ -23,6 +27,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -35,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController
  * @property sessions 处理当前会话的注销事务。
  * @property menus 根据当前用户的权限构建可见菜单。
  * @property captcha 签发可在会话建立前获取的一次性验证码。
+ * @property users 查询和保存已认证账号的个人资料。
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -44,6 +50,7 @@ class SystemAuthenticationController(
     private val sessions: SystemSessionTransactions,
     private val menus: SystemMenus,
     private val captcha: SystemLoginCaptcha,
+    private val users: SystemUsers,
 ) {
     /** 查询是否启用验证码，启用时签发新挑战，关闭时返回 HTTP 204。 */
     @GetMapping("/captcha")
@@ -138,6 +145,40 @@ class SystemAuthenticationController(
         )
     }
 
+    /** 读取当前会话用户的个人资料。 */
+    @GetMapping("/me/profile")
+    @Operation(
+        summary = "获取本人资料",
+        description = "登录后可读取自己的显示名称和联系方式。",
+        responses = [ApiResponse(responseCode = "200", description = "本人资料", useReturnTypeSchema = true)],
+    )
+    fun profile(): OwnProfile = users.ownProfile()
+
+    /** 保存当前会话用户的显示名称和联系方式。 */
+    @PutMapping("/me/profile")
+    @Operation(
+        summary = "更新本人资料",
+        description = "只更新身份对应的账号。省略可选联系方式或传 null、空字符串时清除对应字段。",
+        responses = [
+            ApiResponse(responseCode = "200", description = "更新后的本人资料", useReturnTypeSchema = true),
+            ApiResponse(responseCode = "400", description = "资料字段格式无效", content = [Content()]),
+        ],
+    )
+    fun updateProfile(@RequestBody request: OwnProfileRequest): OwnProfile = users.updateOwnProfile(request)
+
+    /** 校验旧密码并更换当前会话用户的密码。 */
+    @PutMapping("/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+        summary = "修改本人密码",
+        description = "需要登录并提供正确的旧密码。成功后撤销该账号的全部会话，包括本次使用的令牌。",
+        responses = [
+            ApiResponse(responseCode = "204", description = "密码已更新，须重新登录", content = [Content()]),
+            ApiResponse(responseCode = "400", description = "旧密码不正确或新密码格式无效", content = [Content()]),
+        ],
+    )
+    fun changePassword(@RequestBody request: ChangePasswordRequest) = authentication.changePassword(request)
+
     /**
      * 按当前用户的权限获取导航菜单。
      *
@@ -146,7 +187,7 @@ class SystemAuthenticationController(
     @GetMapping("/me/menus")
     @Operation(
         summary = "获取当前用户可见菜单",
-        description = "根据节点及其祖先的启用状态、关联模块是否安装和当前用户持有的权限筛选菜单树。",
+        description = "根据节点及其祖先的启用状态、模块和有效权限筛选。启用直接菜单配置时进一步限制可见节点。",
         responses = [ApiResponse(responseCode = "200", description = "可见菜单树", useReturnTypeSchema = true)],
     )
     fun menus(): List<MenuNode> = menus.visibleTree(currentSystemActor())

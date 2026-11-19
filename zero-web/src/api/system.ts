@@ -31,6 +31,13 @@ export interface UserDetails {
   roleIds: string[]
 }
 
+export interface OwnProfile {
+  username: string
+  displayName: string
+  email: string | null
+  mobile: string | null
+}
+
 export const dataScopes = {
   SELF: '仅本人',
   DEPARTMENT: '本部门',
@@ -48,6 +55,11 @@ export interface RoleSummary extends AssignedRole {
 export interface RoleDetails {
   role: RoleSummary
   permissionCodes: string[]
+}
+
+export interface RoleMenus {
+  mode: 'LEGACY' | 'DIRECT'
+  menuIds: string[]
 }
 
 export interface DepartmentNode {
@@ -86,6 +98,12 @@ export interface DictionaryItem {
   label: string
   sortOrder: number
   enabled: boolean
+}
+
+export function dictionaryValues(codes: string[], signal?: AbortSignal) {
+  return request<Record<string, DictionaryItem[]>>(apiPath('/dictionaries/by-codes/items'), {
+    method: 'POST', body: { codes }, signal,
+  })
 }
 
 export interface LoginAuditEntry {

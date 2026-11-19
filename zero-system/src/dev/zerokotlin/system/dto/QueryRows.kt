@@ -42,3 +42,16 @@ class AuthorityRow(
     var code: String = "",
     var dataScope: String = "",
 )
+
+/**
+ * 角色的菜单配置及一条关联记录。
+ *
+ * @property roleId 业务角色 ID。
+ * @property directMenus 是否使用直接菜单配置，`1` 表示启用。
+ * @property menuId 勾选的菜单 ID，未勾选任何菜单时为 null。
+ */
+class RoleMenuRow(
+    var roleId: String = "",
+    var directMenus: Int = 0,
+    var menuId: String? = null,
+)

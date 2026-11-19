@@ -16,6 +16,7 @@ import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
 import dev.zerokotlin.system.support.ExcelImportRow
 import dev.zerokotlin.system.support.atExcelRow
 import dev.zerokotlin.system.support.checkedCode
+import dev.zerokotlin.system.support.checkedDeleteIds
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
 import dev.zerokotlin.system.support.flag
@@ -84,6 +85,27 @@ class SystemDictionaries(
         val dictionary = dictionaries.selectOne(query<DictionaryRecord>().eq("code", checkedCode(code)).eq("enabled", 1))
             ?: missing("字典")
         return listItems(dictionary.id, enabledOnly = true)
+    }
+
+    /**
+     * 批量读取启用字典的可用选项，跳过停用或不存在的字典编码。
+     *
+     * @param codes 1～100 个编码，重复编码合并。
+     * @return 以字典编码为键的选项列表，每组按排序值和 ID 升序排列。
+     */
+    @Transactional(readOnly = true)
+    fun valuesByCodes(codes: List<String?>): Map<String, List<DictionaryItem>> {
+        if (codes.size !in 1..100) invalid("每次须查询 1 至 100 个字典编码")
+        val uniqueCodes = codes.map { checkedCode(it ?: invalid("字典编码无效")) }.toSet()
+        val matched = dictionaries.selectList(
+            query<DictionaryRecord>().`in`("code", uniqueCodes).eq("enabled", 1),
+        ).filter { it.code in uniqueCodes }.associateBy { it.code }
+        if (matched.isEmpty()) return emptyMap()
+        val grouped = items.selectList(
+            query<DictionaryItemRecord>().`in`("dictionary_id", matched.values.map { it.id })
+                .eq("enabled", 1).orderByAsc("sort_order", "id"),
+        ).groupBy(DictionaryItemRecord::dictionaryId, DictionaryItemRecord::item)
+        return uniqueCodes.filter { it in matched }.associateWith { grouped[matched.getValue(it).id].orEmpty() }
     }
 
     /**
@@ -194,6 +216,37 @@ class SystemDictionaries(
         val existing = items.selectById(id)?.takeIf { it.dictionaryId == dictionary.id } ?: missing("字典项")
         items.updateById(item(existing.id, dictionary.id, request))
         writes.record(actor, "dictionary.item.update", existing.id)
+    }
+
+    /** 原子删除没有字典项引用的一组字典。 */
+    @Transactional
+    fun delete(ids: List<String?>) {
+        val actor = writes.authorize(DICTIONARY_WRITE, administratorOnly = true)
+        val targets = checkedDeleteIds(ids)
+        for (id in targets) {
+            if (dictionary(id).id != id) missing("字典")
+            if (items.selectCount(query<DictionaryItemRecord>().eq("dictionary_id", id)) != 0L) {
+                conflict("请先删除字典下的全部字典项")
+            }
+        }
+        for (id in targets) {
+            if (dictionaries.deleteById(id) != 1) missing("字典")
+            writes.record(actor, "dictionary.delete", id)
+        }
+    }
+
+    /** 原子删除同一字典下的一组字典项，包含停用项。 */
+    @Transactional
+    fun deleteItems(dictionaryId: String, ids: List<String?>) {
+        val actor = writes.authorize(DICTIONARY_WRITE, administratorOnly = true)
+        val dictionary = dictionary(dictionaryId)
+        val targets = checkedDeleteIds(ids)
+        val found = items.selectList(query<DictionaryItemRecord>().eq("dictionary_id", dictionary.id).`in`("id", targets))
+        if (found.map { it.id }.toSet() != targets) missing("字典项")
+        for (id in targets) {
+            if (items.deleteById(id) != 1) missing("字典项")
+            writes.record(actor, "dictionary.item.delete", id)
+        }
     }
 
     /**

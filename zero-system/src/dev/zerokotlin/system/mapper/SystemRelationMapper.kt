@@ -2,6 +2,7 @@ package dev.zerokotlin.system.mapper
 
 import dev.zerokotlin.system.dto.AssignedRoleRow
 import dev.zerokotlin.system.dto.AuthorityRow
+import dev.zerokotlin.system.dto.RoleMenuRow
 import org.apache.ibatis.annotations.Delete
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.Mapper
@@ -45,6 +46,44 @@ interface SystemRelationMapper {
      */
     @Select("SELECT permission_code FROM sys_role_permission WHERE role_id = #{roleId} ORDER BY permission_code")
     fun findRolePermissionCodes(@Param("roleId") roleId: String): List<String>
+
+    /** 一次读取角色的模式和直接菜单关联，同时包含无关联的角色。 */
+    @Select(
+        """SELECT r.id AS role_id, r.direct_menus, rm.menu_id
+           FROM sys_role r LEFT JOIN sys_role_menu rm ON rm.role_id = r.id
+           WHERE r.id = #{roleId} ORDER BY rm.menu_id""",
+    )
+    fun findRoleMenuSettings(@Param("roleId") roleId: String): List<RoleMenuRow>
+
+    /** 查询用户已启用的直接菜单角色，每个角色即使没有勾选也返回一行。 */
+    @Select(
+        """SELECT r.id AS role_id, r.direct_menus, rm.menu_id
+           FROM sys_user_role ur
+           JOIN sys_role r ON r.id = ur.role_id AND r.enabled = 1 AND r.direct_menus = 1
+           LEFT JOIN sys_role_menu rm ON rm.role_id = r.id
+           WHERE ur.user_id = #{userId}""",
+    )
+    fun findDirectMenuRows(@Param("userId") userId: String): List<RoleMenuRow>
+
+    /** 将指定菜单直接分配给角色。 */
+    @Insert("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (#{roleId}, #{menuId})")
+    fun insertRoleMenu(@Param("roleId") roleId: String, @Param("menuId") menuId: String)
+
+    /** 删除角色的全部直接菜单关联。 */
+    @Delete("DELETE FROM sys_role_menu WHERE role_id = #{roleId}")
+    fun deleteRoleMenus(@Param("roleId") roleId: String)
+
+    /** 统计引用指定角色的账号数，包含停用账号。 */
+    @Select("SELECT COUNT(*) FROM sys_user_role WHERE role_id = #{roleId}")
+    fun countRoleUsers(@Param("roleId") roleId: String): Long
+
+    /** 删除指定用户的岗位关联。 */
+    @Delete("DELETE FROM sys_user_position WHERE user_id = #{userId}")
+    fun deleteUserPositions(@Param("userId") userId: String)
+
+    /** 删除指定用户的公告已读记录。 */
+    @Delete("DELETE FROM sys_announcement_read WHERE user_id = #{userId}")
+    fun deleteUserAnnouncementReads(@Param("userId") userId: String)
 
     /**
      * 检查用户是否拥有已启用的内置系统管理员角色。

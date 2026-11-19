@@ -124,6 +124,12 @@ export async function signIn(username: string, password: string, captcha?: { id:
   await refreshSession()
 }
 
+export async function changeOwnPassword(oldPassword: string, newPassword: string) {
+  const current = token
+  await request<void>('/api/auth/me/password', { method: 'PUT', body: { oldPassword, newPassword } })
+  if (current === token) clearSession()
+}
+
 export async function signOut() {
   try {
     await request<void>('/api/auth/logout', { method: 'POST' })

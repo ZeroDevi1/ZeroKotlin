@@ -15,6 +15,8 @@ import com.baomidou.mybatisplus.annotation.TableName
  * @property passwordHash 密码编码器生成的哈希，用于验证登录密码。
  * @property departmentId 所属部门 ID，更新为 `null` 可清除部门归属。
  * @property enabled 启用标志，`1` 表示启用，`0` 表示停用。
+ * @property email 用户自行维护的可选邮箱。
+ * @property mobile 用户自行维护的可选手机号。
  */
 @TableName("sys_user")
 class UserRecord(
@@ -26,4 +28,6 @@ class UserRecord(
     @field:TableField(updateStrategy = FieldStrategy.ALWAYS)
     var departmentId: String? = null,
     var enabled: Int = 1,
+    var email: String? = null,
+    var mobile: String? = null,
 )

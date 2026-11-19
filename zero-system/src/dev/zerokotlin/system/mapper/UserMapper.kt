@@ -6,10 +6,15 @@ import dev.zerokotlin.system.dto.UserRow
 import dev.zerokotlin.system.entity.UserRecord
 import org.apache.ibatis.annotations.Mapper
 import org.apache.ibatis.annotations.Param
+import org.apache.ibatis.annotations.Update
 
 /** 账号数据访问接口，提供用户可见性、会话身份和岗位成员查询。 */
 @Mapper
 interface UserMapper : BaseMapper<UserRecord> {
+    /** 仅更新指定用户的密码哈希。 */
+    @Update("UPDATE sys_user SET password_hash = #{hash} WHERE id = #{id}")
+    fun updatePassword(@Param("id") id: String, @Param("hash") hash: String)
+
     /**
      * 统计可见范围内且符合列表筛选条件的用户。
      *

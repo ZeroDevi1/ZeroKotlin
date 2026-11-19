@@ -83,6 +83,31 @@ data class RoleDetails(
     val permissionCodes: List<String>,
 )
 
+/** 角色导航菜单的可见性规则。 */
+enum class RoleMenuMode {
+    /** 继续使用原有菜单权限规则。 */
+    LEGACY,
+
+    /** 以逐项勾选的菜单作为可见候选。 */
+    DIRECT,
+}
+
+/** 替换业务角色的菜单配置。 */
+data class RoleMenusRequest(
+    @field:Schema(description = "菜单配置方式。LEGACY 时清除直接分配，DIRECT 时按勾选限制。")
+    val mode: RoleMenuMode,
+    @field:Schema(description = "直接分配的菜单 ID 集合，最多 256 个。")
+    val menuIds: Set<String>,
+)
+
+/** 业务角色已保存的菜单模式和直接菜单 ID。 */
+data class RoleMenus(
+    @field:Schema(description = "角色保存的菜单配置方式。")
+    val mode: RoleMenuMode,
+    @field:Schema(description = "按 ID 升序排列的全部直接菜单关联，包含停用菜单。")
+    val menuIds: List<String>,
+)
+
 /**
  * 新建自定义权限点的请求。
  *

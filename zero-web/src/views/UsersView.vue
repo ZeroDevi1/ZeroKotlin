@@ -7,6 +7,7 @@ import {
   type DepartmentNode, type UserDetails, type UserListEntry, type UserSummary,
 } from '@/api/system'
 import { refreshSession, useAuth } from '@/store/auth'
+import DeleteDialog from '@/components/DeleteDialog.vue'
 import EditDialog from '@/components/EditDialog.vue'
 import ExcelActions from '@/components/ExcelActions.vue'
 import ListState from '@/components/ListState.vue'
@@ -61,16 +62,34 @@ function canEditProfile(user: UserSummary) {
   return !department || department.ancestors.includes(auth.user.departmentId)
 }
 
-type Mode = 'detail' | 'create' | 'profile' | 'account'
+type Mode = 'detail' | 'create' | 'profile' | 'account' | 'password'
 const modal = ref<{ mode: Mode; entry?: UserListEntry } | null>(null)
 const titles: Record<Mode, string> = {
-  detail: '用户详情', create: '创建账号', profile: '编辑资料', account: '管理账号',
+  detail: '用户详情', create: '创建账号', profile: '编辑资料', account: '管理账号', password: '重置密码',
 }
 const draft = reactive({ username: '', displayName: '', departmentId: '', password: '', roleIds: [] as string[], enabled: true })
 const feedback = ref('')
 const { busy, error: saveError, run } = useAction()
 const adminAccount = computed(() => draft.roleIds.includes(adminRoleId))
 const needsOptions = computed(() => modal.value?.mode === 'create' || modal.value?.mode === 'account')
+const selectedIds = ref<string[]>([])
+const removing = ref<{ ids: string[]; name?: string } | null>(null)
+watch(data, () => { selectedIds.value = [] })
+
+function openDelete(entry?: UserListEntry) {
+  removing.value = entry
+    ? { ids: [entry.user.id], name: entry.user.displayName }
+    : { ids: [...selectedIds.value] }
+}
+
+function deleted(ids: string[]) {
+  removing.value = null
+  feedback.value = `已删除 ${ids.length} 个账号。`
+  const lastPage = Math.max(1, Math.ceil((total.value - ids.length) / size.value))
+  if (page.value > lastPage) page.value = lastPage
+  else void reload()
+}
+
 const {
   data: detail, loading: detailLoading, error: detailError, reload: reloadDetail,
 } = useResource<UserDetails>(() => {
@@ -114,9 +133,15 @@ async function save() {
       })
       return
     }
-    if (draft.password || item.mode === 'create') {
+    if (item.mode === 'password' || item.mode === 'create') {
       const invalid = passwordError(draft.password)
       if (invalid) throw new Error(invalid)
+    }
+    if (item.mode === 'password' && selectedId) {
+      await request(apiPath(`/users/${encodeURIComponent(selectedId)}/password`), {
+        method: 'PUT', body: { newPassword: draft.password },
+      })
+      return
     }
     const account = { departmentId: draft.departmentId || null, roleIds: draft.roleIds }
     if (item.mode === 'create') {
@@ -127,12 +152,13 @@ async function save() {
     } else if (selectedId) {
       await request(apiPath(`/users/${encodeURIComponent(selectedId)}/account`), {
         method: 'PUT',
-        body: { ...account, enabled: draft.enabled, password: draft.password || null },
+        body: { ...account, enabled: draft.enabled },
       })
     }
   })
   if (!completed) return
-  feedback.value = item.mode === 'create' ? '账号已创建。' : '用户信息已保存。'
+  feedback.value = item.mode === 'password' ? '密码已重置，原会话已撤销。'
+    : item.mode === 'create' ? '账号已创建。' : '用户信息已保存。'
   close()
   if (selectedId === auth.user?.id) await refreshSession().catch(() => undefined)
   await reload()
@@ -170,6 +196,9 @@ async function save() {
       </label>
       <button class="btn" type="submit">筛选</button>
       <button class="btn btn-quiet" type="button" @click="reset">重置</button>
+      <button v-if="manage" class="btn" type="button" :disabled="!selectedIds.length || loading" @click="openDelete()">
+        删除选中<span v-if="selectedIds.length">（{{ selectedIds.length }}）</span>
+      </button>
     </form>
     <div v-if="departmentError || roleError" class="toolbar">
       <span class="muted" role="status">部分筛选选项读取失败，可以按 ID 筛选。</span>
@@ -178,10 +207,17 @@ async function save() {
     </div>
     <ListState :loading="loading" :error="error" :empty="!data?.items.length" empty-text="当前筛选条件下暂无用户。" @retry="reload">
       <UserTable :entries="data?.items ?? []" :department-names="departmentNames" show-department>
+        <template v-if="manage" #selection="{ entry }">
+          <input v-if="!entry.roles.some(role => role.id === adminRoleId)" v-model="selectedIds" type="checkbox"
+            :value="entry.user.id" :aria-label="`选择账号 ${entry.user.username}`">
+        </template>
         <template #actions="{ entry }">
           <button type="button" class="btn btn-quiet" @click="open('detail', entry)">详情</button>
           <button v-if="canEditProfile(entry.user)" type="button" class="btn btn-quiet" @click="open('profile', entry)">编辑资料</button>
           <button v-if="manage" type="button" class="btn btn-quiet" @click="open('account', entry)">管理账号</button>
+          <button v-if="manage" type="button" class="btn btn-quiet" @click="open('password', entry)">重置密码</button>
+          <button v-if="manage && !entry.roles.some(role => role.id === adminRoleId)" type="button" class="btn btn-quiet"
+            @click="openDelete(entry)">删除</button>
         </template>
       </UserTable>
     </ListState>
@@ -207,12 +243,18 @@ async function save() {
       <div class="form-grid">
         <label v-if="modal.mode !== 'profile'" class="field">
           <span>账号</span>
-          <input v-model="draft.username" :disabled="modal.mode === 'account'" :pattern="usernamePattern"
+          <input v-model="draft.username" :disabled="modal.mode !== 'create'" :pattern="usernamePattern"
             maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" required>
         </label>
-        <label v-if="modal.mode !== 'account'" class="field" :class="{ 'span-full': modal.mode === 'profile' }">
+        <label v-if="modal.mode === 'create' || modal.mode === 'profile'" class="field" :class="{ 'span-full': modal.mode === 'profile' }">
           <span>显示名</span><input v-model.trim="draft.displayName" required maxlength="120">
         </label>
+        <label v-if="modal.mode === 'create' || modal.mode === 'password'" class="field">
+          <span>{{ modal.mode === 'create' ? '初始密码' : '新密码' }}</span>
+          <input v-model="draft.password" type="password" autocomplete="new-password" required maxlength="72">
+          <small>至少 12 个字符，最多 72 个 UTF-8 字节。</small>
+        </label>
+        <p v-if="modal.mode === 'password'" class="muted span-full">重置后，该账号的所有会话都会退出。</p>
         <template v-if="needsOptions">
           <label class="field">
             <span>部门</span>
@@ -220,11 +262,6 @@ async function save() {
               <option value="">无部门</option>
               <option v-for="{ node, trail } in departmentRows" :key="node.id" :value="node.id">{{ trail }}</option>
             </select>
-          </label>
-          <label class="field">
-            <span>{{ modal.mode === 'create' ? '初始密码' : '新密码' }}</span>
-            <input v-model="draft.password" type="password" autocomplete="new-password" :required="modal.mode === 'create'">
-            <small>{{ modal.mode === 'create' ? '至少 12 个字符，最多 72 个 UTF-8 字节。' : '留空保留当前密码。重置后注销该账号的所有会话。' }}</small>
           </label>
           <label v-if="modal.mode === 'account'" class="checkline">
             <input v-model="draft.enabled" type="checkbox" :disabled="adminAccount"> 启用账号
@@ -251,4 +288,8 @@ async function save() {
       </div>
     </form>
   </EditDialog>
+
+  <DeleteDialog v-if="removing" collection="/users" resource="账号" :ids="removing.ids" :name="removing.name"
+    description="删除会撤销会话并移除角色、岗位及公告已读记录。"
+    @close="removing = null" @deleted="deleted" />
 </template>

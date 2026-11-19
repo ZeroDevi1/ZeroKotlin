@@ -2,6 +2,12 @@ package dev.zerokotlin.system.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
 
+/** 按编码批量查询启用字典的请求。 */
+data class DictionaryCodesRequest(
+    @field:Schema(description = "1～100 个字典编码，重复编码合并。")
+    val codes: List<String?>,
+)
+
 /**
  * 新建字典的请求。
  *

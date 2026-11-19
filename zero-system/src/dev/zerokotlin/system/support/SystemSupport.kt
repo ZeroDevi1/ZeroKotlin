@@ -55,6 +55,12 @@ fun normalizeUsername(value: String): String? =
 fun checkedCode(value: String): String =
     value.takeIf(codePattern::matches) ?: invalid("编码只能使用小写字母、数字、冒号、下划线和连字符，最长 120 字符")
 
+/** 校验删除范围并合并重复 ID，保留原始标识和顺序。 */
+fun checkedDeleteIds(ids: List<String?>): Set<String> {
+    if (ids.size !in 1..100) invalid("每次须指定 1 至 100 个待删除 ID")
+    return ids.map { it?.takeIf { id -> id.isNotBlank() && id.length <= 36 } ?: invalid("资源 ID 无效") }.toSet()
+}
+
 /**
  * 去除首尾空白并校验文本长度。
  *

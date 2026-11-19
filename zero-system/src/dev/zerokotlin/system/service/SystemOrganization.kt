@@ -11,6 +11,7 @@ import dev.zerokotlin.system.entity.MenuRecord
 import dev.zerokotlin.system.mapper.DepartmentMapper
 import dev.zerokotlin.system.mapper.MenuMapper
 import dev.zerokotlin.system.mapper.PermissionMapper
+import dev.zerokotlin.system.mapper.SystemRelationMapper
 import dev.zerokotlin.system.security.DEPARTMENT_WRITE
 import dev.zerokotlin.system.security.MENU_WRITE
 import dev.zerokotlin.system.security.SystemActor
@@ -108,6 +109,7 @@ class SystemDepartments(
  *
  * @property menus 读写菜单节点及父子关系。
  * @property permissions 核验菜单引用的权限编码是否存在。
+ * @property relations 查找当前用户所属角色的直接菜单配置。
  * @property writes 串行化菜单写入，校验权限并将变更与审计一并提交。
  * @param modules 提供已注册的模块迁移描述，从中提取可用模块名。
  */
@@ -115,6 +117,7 @@ class SystemDepartments(
 class SystemMenus(
     private val menus: MenuMapper,
     private val permissions: PermissionMapper,
+    private val relations: SystemRelationMapper,
     private val writes: SystemWrites,
     modules: ObjectProvider<ModuleMigration>,
 ) {
@@ -129,24 +132,29 @@ class SystemMenus(
     fun tree(): List<MenuNode> = buildTree { true }
 
     /**
-     * 按启用状态、模块是否可用及会话是否持有菜单权限筛选节点。
+     * 按启用状态、模块是否可用及有效权限筛选节点。存在已启用的直接菜单角色时，
+     * 进一步按这些角色勾选的菜单并集筛选。保留满足守卫条件的祖先用于展示层级。
      *
      * @param actor 当前会话主体，使用持有的权限编码判断菜单可见性。
      * @return 筛选后从根节点可达的菜单树。父节点被筛除时，其分支也不会出现在结果中。
      */
-    fun visibleTree(actor: SystemActor): List<MenuNode> =
-        buildTree {
+    fun visibleTree(actor: SystemActor): List<MenuNode> {
+        val rows = if (actor.administrator) emptyList() else relations.findDirectMenuRows(actor.user.id)
+        val selected = rows.takeIf { it.isNotEmpty() }?.mapNotNull { it.menuId }?.toSet()
+        return buildTree(selected) {
             it.enabled == 1 && (it.moduleName == null || it.moduleName in installedModules) &&
                 (it.permissionCode == null || it.permissionCode in actor.scopes)
         }
+    }
 
     /**
      * 先筛选节点，再按父节点分组并从根层级递归构建。
      *
+     * @param selected 直接勾选的节点。为 null 时沿用权限规则，空集合表示无直接菜单。
      * @param visible 判定单条菜单记录是否参与建树。
      * @return 菜单树的根节点列表，同一父节点下按排序值和 ID 升序排列。
      */
-    private fun buildTree(visible: (MenuRecord) -> Boolean): List<MenuNode> {
+    private fun buildTree(selected: Set<String>? = null, visible: (MenuRecord) -> Boolean): List<MenuNode> {
         val children = menus.selectList(query<MenuRecord>().orderByAsc("sort_order", "id"))
             .filter(visible).groupBy { it.parentId }
 
@@ -156,8 +164,13 @@ class SystemMenus(
          * @param parentId 父菜单 ID，为 null 时处理根层级。
          * @return 指定层级的菜单节点，各节点包含其可达子树。
          */
-        fun branch(parentId: String?): List<MenuNode> = children[parentId].orEmpty().map {
-            MenuNode(it.id, it.name, it.path, it.permissionCode, it.sortOrder, it.enabled == 1, branch(it.id))
+        fun branch(parentId: String?): List<MenuNode> = children[parentId].orEmpty().mapNotNull {
+            val descendants = branch(it.id)
+            val included = selected == null || it.id in selected
+            if (!included && descendants.isEmpty()) return@mapNotNull null
+            MenuNode(
+                it.id, it.name, it.path.takeIf { included }, it.permissionCode, it.sortOrder, it.enabled == 1, descendants,
+            )
         }
 
         return branch(null)

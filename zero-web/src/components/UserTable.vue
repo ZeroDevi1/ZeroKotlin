@@ -7,7 +7,10 @@ defineProps<{
   departmentNames?: Record<string, string>
   showDepartment?: boolean
 }>()
-defineSlots<{ actions?(props: { entry: UserListEntry }): unknown }>()
+defineSlots<{
+  actions?(props: { entry: UserListEntry }): unknown
+  selection?(props: { entry: UserListEntry }): unknown
+}>()
 </script>
 
 <template>
@@ -15,6 +18,7 @@ defineSlots<{ actions?(props: { entry: UserListEntry }): unknown }>()
     <table class="data-table" aria-label="用户列表">
       <thead>
         <tr>
+          <th v-if="$slots.selection" scope="col"><span class="sr-only">选择用户</span></th>
           <th scope="col">用户</th>
           <th v-if="showDepartment" scope="col">部门</th>
           <th scope="col">角色</th>
@@ -24,6 +28,7 @@ defineSlots<{ actions?(props: { entry: UserListEntry }): unknown }>()
       </thead>
       <tbody>
         <tr v-for="entry in entries" :key="entry.user.id">
+          <td v-if="$slots.selection"><slot name="selection" :entry="entry" /></td>
           <td><strong>{{ entry.user.displayName }}</strong><span class="cell-meta">{{ entry.user.username }}</span></td>
           <td v-if="showDepartment">
             {{ entry.user.departmentId ? (departmentNames?.[entry.user.departmentId] ?? entry.user.departmentId) : '无部门' }}
