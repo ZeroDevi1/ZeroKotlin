@@ -1,25 +1,25 @@
 # 系统模块
 
-`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。它复用 `zero-core` 的数据源、MyBatis-Plus 和 Bearer 过滤链，并通过 `BearerSessionAuthentication` 提供持久化会话查询和权限计算。Flyway 从 `classpath:db/migration/common` 执行 `V1__system.sql`。MyBatis-Plus 扫描 `classpath*:/mapper/**/*.xml`，实体按驼峰属性映射下划线列名。
+`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。它复用 `zero-core` 的数据源、MyBatis-Plus 和 Bearer 过滤链，并通过 `BearerSessionAuthentication` 提供持久化会话查询和权限计算。Flyway 从 `classpath:db/migration/common` 按版本顺序执行系统迁移。MyBatis-Plus 扫描 `classpath*:/mapper/**/*.xml`，实体按驼峰属性映射下划线列名。
 
 ## 首次启动
 
-在应用进程环境中配置以下变量。空库启动时，前两项同时有值才创建管理员。初始化成功后可以从部署环境移除这两项。已有用户的库会保留现有账号和密码。
+空用户库默认创建 `admin`，登录密码为 `admin`，并关联内置角色 `system-admin`。使用默认编码器时，V9 SQL 写入 BCrypt 哈希。可以在首次启动前用下列环境变量覆盖初始凭据。[管理员初始化 SQL](../zero-system/resources/db/migration/common/V9__initial_administrator.sql)
 
 | 环境变量 | Spring 属性 | 用途 |
 | --- | --- | --- |
-| `ZERO_SYSTEM_ADMIN_USERNAME` | `zero.system.admin.username` | 首次管理员用户名，例如 `admin`。3–64 个 ASCII 字符，以字母或数字开头，后续也可使用点、下划线和连字符。保存为小写。 |
-| `ZERO_SYSTEM_ADMIN_PASSWORD` | `zero.system.admin.password` | 首次管理员密码，至少 12 个字符且最多 72 个 UTF-8 字节。由部署方设置。 |
+| `ZERO_SYSTEM_ADMIN_USERNAME` | `zero.system.admin.username` | 首次管理员用户名，默认 `admin`。3–64 个 ASCII 字符，以字母或数字开头，后续也可使用点、下划线和连字符。保存为小写。 |
+| `ZERO_SYSTEM_ADMIN_PASSWORD` | `zero.system.admin.password` | 默认账号密码为 `admin`。自定义初始密码至少 12 个 Unicode 码点，最多 72 个 UTF-8 字节。 |
 | `ZERO_SYSTEM_SESSION_SECONDS` | `zero.system.session.seconds` | 登录令牌有效期，默认 28800 秒，允许 1–604800 秒。 |
 
-两项管理员变量均为空时，空库可以启动并开放健康检查和 API 文档。此时先配置两项变量并重启，随后可登录。初始化只接受一个内置管理员。
+设置自定义凭据时，启动初始化器会使用部署配置的密码编码器创建该账号。初始化后可移除这两个变量。已有用户的数据库保留原密码和角色关联；用户可在个人中心修改密码。
 
 ## 登录和会话
 
 发送 `POST /api/auth/login`，请求体为 JSON。
 
 ```json
-{"username":"admin","password":"<首次启动配置的密码>"}
+{"username":"admin","password":"admin"}
 ```
 
 登录成功返回 `accessToken`、`tokenType`（`Bearer`）和 `expiresAt`（Unix 毫秒）。将 `Authorization: Bearer <accessToken>` 加入后续请求。默认由 `zero-core` 提供工作因子为 12 的 BCrypt 编码器。账户创建、首次初始化和修改密码只写入非空哈希。数据库同时保存会话的 SHA-256 摘要。退出删除当前会话摘要。停用或删除账号、修改或重置密码会注销该用户的所有会话。重新启用账号后需重新登录。角色、权限点、账号和令牌状态在每次请求认证时读取数据库，变更提交后下一次请求立即生效。

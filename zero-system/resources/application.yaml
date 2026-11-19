@@ -96,10 +96,10 @@ zero:
     #   "[sasl.mechanism]": SCRAM-SHA-512
     #   "[sasl.jaas.config]": ${ZERO_KAFKA_SASL_JAAS_CONFIG}
   system:
-    # 在空用户表中创建首个管理员时，同时设置以下两个环境变量，密码至少 12 个字符。
+    # 仅对空用户表生效。生产部署可在首次启动前通过环境变量覆盖默认凭据。
     admin:
-      username: ${ZERO_SYSTEM_ADMIN_USERNAME:}
-      password: ${ZERO_SYSTEM_ADMIN_PASSWORD:}
+      username: ${ZERO_SYSTEM_ADMIN_USERNAME:admin}
+      password: ${ZERO_SYSTEM_ADMIN_PASSWORD:admin}
     session:
       seconds: 28800
     captcha:

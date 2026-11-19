@@ -18,6 +18,7 @@ fun enabled(flag: String): Boolean =
     providers.gradleProperty(flag).map { it.toBooleanStrict() }.getOrElse(false)
 
 dependencies {
+    implementation("org.springframework.boot:spring-boot-flyway")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation(project(":zero-core"))

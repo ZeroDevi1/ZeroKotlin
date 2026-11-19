@@ -363,7 +363,7 @@ async function createOrder() {
 
 ### 6. 启动并验收
 
-1. 在仓库根目录执行 `./gradlew :zero-system:bootRun`。空库启动前先配置管理员环境变量，已有库继续使用原来的账号。订单迁移成功时，数据库中应出现 `orders_order` 和 `zero_history_orders`。[首次启动](../README.md#首次启动)
+1. 在仓库根目录执行 `./gradlew :zero-system:bootRun`。空库可用默认管理员 `admin` / `admin` 登录，已有库继续使用原来的账号。订单迁移成功时，数据库中应出现 `orders_order` 和 `zero_history_orders`。[首次启动](../README.md#首次启动)
 2. 用管理员账号从 Swagger UI 登录并完成 Bearer 授权，再发送 `POST /api/orders` 创建订单。记录 HTTP 201 响应中的 `id`。[登录接口](system.md#登录和会话)
 3. 调用 `GET /api/orders?page=1&size=20`，确认 `items` 包含刚创建的 ID。
 4. 用管理员账号查询 `GET /api/system/audits/operations?action=orders:order:write`，确认该订单的 ID 出现在 `targetId`，`actorId` 为创建者的用户 ID。[审计 API](system.md#管理-api)

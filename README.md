@@ -16,18 +16,13 @@ Gradle 会从 `.vfox/sdks/java` 查找本项目的工具链，也支持自动发
 
 macOS 上，若旧版 vfox Java 插件留下空的 `Contents/Home`，Gradle 会在该目录中查找 `bin/java`。确认 `.vfox/sdks/java/bin/javac` 存在后，可执行 `rmdir .vfox/sdks/java/Contents/Home` 移除空目录，再刷新 Gradle 项目。
 
-准备好 JDK 后，在仓库根目录的 Bash 或 Zsh 中设置首次管理员密码。密码至少为 12 个字符，最多 72 个 UTF-8 字节。
+准备好 JDK 后，在仓库根目录启动后端。空库首次启动的管理员用户名为 `admin`，密码为 `admin`。
 
 ```sh
-export ZERO_SYSTEM_ADMIN_USERNAME=admin
-printf '首次管理员密码（输入时隐藏） '
-read -rs ZERO_SYSTEM_ADMIN_PASSWORD
-printf '\n'
-export ZERO_SYSTEM_ADMIN_PASSWORD
 ./gradlew :zero-system:bootRun
 ```
 
-应用在空用户表中创建首个管理员。后续启动可以移除这两个环境变量。在默认开发环境中，可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
+在默认开发环境中，可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
 
 ### 开发与生产配置
 
@@ -38,7 +33,7 @@ Spring Boot 先读取公共配置，再应用所选环境。数据库、缓存�
 | [dev](zero-system/resources/application-dev.yaml) | `./gradlew :zero-system:bootRun` | 默认 SQLite 文件为 `data/zero-kotlin.db`，开放 OpenAPI 和 Swagger UI，登录默认无需验证码。 |
 | [prod](zero-system/resources/application-prod.yaml) | `SPRING_PROFILES_ACTIVE=prod ./gradlew :zero-system:bootRun` | 本地数据库和文件默认保存在 `data/prod/`，开启验证码、审计 IP 脱敏与纯文本清理，关闭 OpenAPI 和 Swagger UI。 |
 
-相对路径从应用工作目录解析。生产部署可用 `ZERO_DATABASE_MODE=postgresql` 和 `ZERO_DATABASE_POSTGRESQL_URL` 等环境变量指定外部数据库。首次管理员密码及可选服务密钥由部署环境提供。使用临时 SQLite 和随机回环端口的自动化测试可通过 `./gradlew :zero-core:test :zero-system:test` 运行。
+相对路径从应用工作目录解析。生产部署可用 `ZERO_DATABASE_MODE=postgresql` 和 `ZERO_DATABASE_POSTGRESQL_URL` 等环境变量指定外部数据库。生产部署可在首次启动前用 `ZERO_SYSTEM_ADMIN_USERNAME` 和 `ZERO_SYSTEM_ADMIN_PASSWORD` 指定独立的初始凭据。已有用户的数据库保留原账号、密码和授权。使用临时 SQLite 和随机回环端口的自动化测试可通过 `./gradlew :zero-core:test :zero-system:test` 运行。
 
 ## 启动管理端
 
