@@ -3,7 +3,6 @@ package dev.zerokotlin.system
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper
 import dev.zerokotlin.core.OperationAudit
 import org.springframework.http.HttpStatus
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -69,12 +68,16 @@ class SystemWrites(
         check(relations.lockSystemWrites() == 1) { "缺少系统写入锁记录" }
     }
 
-    fun authorize(authority: String, administratorOnly: Boolean = false): SystemActor {
+    fun lockAndAuthenticate(): SystemActor {
         lock()
-        val actor = sessions.authenticate(currentSystemActor().sessionDigest)
+        return sessions.authenticate(currentSystemActor().sessionDigest)
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
+    }
+
+    fun authorize(authority: String, administratorOnly: Boolean = false): SystemActor {
+        val actor = lockAndAuthenticate()
         actor.requireScope(authority)
-        if (administratorOnly && !actor.administrator) throw AccessDeniedException("仅系统管理员可执行此操作")
+        if (administratorOnly) actor.requireAdministrator()
         return actor
     }
 

@@ -76,4 +76,11 @@
         FROM sys_session s JOIN sys_user u ON u.id = s.user_id AND u.enabled = 1
         WHERE s.digest = #{digest} AND s.expires_at &gt; #{now}
     </select>
+
+    <select id="findPositionMembers" resultMap="userRow">
+        SELECT <include refid="userColumns"/>
+        FROM sys_user_position up JOIN sys_user u ON u.id = up.user_id
+        WHERE up.position_id = #{positionId}
+        ORDER BY u.username, u.id
+    </select>
 </mapper>

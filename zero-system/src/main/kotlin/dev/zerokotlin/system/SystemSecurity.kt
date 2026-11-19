@@ -23,6 +23,10 @@ class SystemActor(
 ) {
     fun requireScope(authority: String): DataScope =
         scopes[authority] ?: throw AccessDeniedException("缺少权限 $authority")
+
+    fun requireAdministrator() {
+        if (!administrator) throw AccessDeniedException("仅系统管理员可执行此操作")
+    }
 }
 
 fun currentSystemActor(): SystemActor =

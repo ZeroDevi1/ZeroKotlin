@@ -28,6 +28,7 @@ data class CurrentUserResponse(
     val displayName: String,
     val departmentId: String?,
     val permissions: Map<String, DataScope>,
+    val administrator: Boolean,
 )
 
 @Service
@@ -143,6 +144,7 @@ class SystemAuthenticationController(
         val actor = currentSystemActor()
         return CurrentUserResponse(
             actor.user.id, actor.user.username, actor.user.displayName, actor.user.departmentId, actor.scopes,
+            actor.administrator,
         )
     }
 

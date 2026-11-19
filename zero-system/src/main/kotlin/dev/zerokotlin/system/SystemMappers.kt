@@ -15,10 +15,40 @@ interface UserMapper : BaseMapper<UserRecord> {
     fun findUsers(@Param("query") query: UserQuery, @Param("window") window: PageWindow): List<UserRow>
     fun findVisible(@Param("query") query: UserQuery, @Param("id") id: String): UserRow?
     fun findSessionActor(@Param("digest") digest: String, @Param("now") now: Long): UserRow?
+    fun findPositionMembers(@Param("positionId") positionId: String): List<UserRow>
 }
 
 @Mapper
 interface DepartmentMapper : BaseMapper<DepartmentRecord>
+
+@Mapper
+interface PositionMapper : BaseMapper<PositionRecord> {
+    @Insert("INSERT INTO sys_user_position (position_id, user_id) VALUES (#{positionId}, #{userId})")
+    fun insertMember(@Param("positionId") positionId: String, @Param("userId") userId: String)
+
+    @Delete("DELETE FROM sys_user_position WHERE position_id = #{positionId}")
+    fun deleteMembers(@Param("positionId") positionId: String)
+}
+
+@Mapper
+interface AnnouncementMapper : BaseMapper<AnnouncementRecord> {
+    fun findInbox(
+        @Param("userId") userId: String,
+        @Param("unreadOnly") unreadOnly: Boolean,
+        @Param("window") window: PageWindow,
+    ): List<InboxEntry>
+
+    fun countInbox(@Param("userId") userId: String, @Param("unreadOnly") unreadOnly: Boolean): Long
+
+    @Select("SELECT id FROM sys_announcement WHERE id = #{id} AND status = 'PUBLISHED'")
+    fun findPublishedId(@Param("id") id: String): String?
+
+    @Select("SELECT read_at FROM sys_announcement_read WHERE user_id = #{userId} AND announcement_id = #{id}")
+    fun findReadAt(@Param("userId") userId: String, @Param("id") id: String): Long?
+
+    @Insert("INSERT INTO sys_announcement_read (user_id, announcement_id, read_at) VALUES (#{userId}, #{id}, #{now})")
+    fun insertRead(@Param("userId") userId: String, @Param("id") id: String, @Param("now") now: Long)
+}
 
 @Mapper
 interface RoleMapper : BaseMapper<RoleRecord> {

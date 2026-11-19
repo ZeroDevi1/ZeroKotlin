@@ -20,7 +20,7 @@ const val ROLE_WRITE = "system:role:write"
 const val PERMISSION_WRITE = "system:permission:write"
 const val DEPARTMENT_WRITE = "system:department:write"
 
-private val administratorPermissions = setOf(USER_MANAGE, ROLE_WRITE, PERMISSION_WRITE, DEPARTMENT_WRITE)
+private val administratorPermissions = setOf(USER_MANAGE, ROLE_WRITE, PERMISSION_WRITE, DEPARTMENT_WRITE, POSITION_WRITE)
 
 data class CreateRoleRequest(
     val code: String,

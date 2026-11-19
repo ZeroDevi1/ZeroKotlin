@@ -35,6 +35,28 @@ class DepartmentRecord(
     var sortOrder: Int = 0,
 )
 
+@TableName("sys_position")
+class PositionRecord(
+    @field:TableId(type = IdType.INPUT)
+    var id: String = "",
+    var code: String = "",
+    var name: String = "",
+    var enabled: Int = 1,
+    var sortOrder: Int = 0,
+)
+
+@TableName("sys_announcement")
+class AnnouncementRecord(
+    @field:TableId(type = IdType.INPUT)
+    var id: String = "",
+    var title: String = "",
+    var body: String = "",
+    var status: String = AnnouncementStatus.DRAFT.name,
+    var createdAt: Long = 0,
+    var updatedAt: Long = 0,
+    var publishedAt: Long? = null,
+)
+
 @TableName("sys_role")
 class RoleRecord(
     @field:TableId(type = IdType.INPUT)

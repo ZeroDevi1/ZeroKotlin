@@ -28,7 +28,7 @@
 | --- | --- |
 | `POST /api/auth/login` | 公开。成功返回 200，用户名或密码错误、账号禁用时返回 401。 |
 | `POST /api/auth/logout` | 需要登录。当前会话退出后返回 204。 |
-| `GET /api/auth/me` | 需要登录。返回 `id`、`username`、`displayName`、`departmentId` 和 `permissions`。 |
+| `GET /api/auth/me` | 需要登录。返回 `id`、`username`、`displayName`、`departmentId`、`administrator` 和 `permissions`。 |
 | `GET /api/auth/me/menus` | 需要登录。返回当前用户可见的菜单树。 |
 
 `GET /actuator/health`、`/v3/api-docs` 及 Swagger UI 的 GET 请求可匿名访问。启用存活和就绪探针时，其 GET 端点也可匿名访问。其他端点要求 Bearer 认证。
@@ -49,6 +49,8 @@
 用户详情或更新的目标超出范围时返回 404。分页的部门和角色筛选与行级范围同时生效。部门筛选只匹配所指定部门，角色筛选匹配实际关联（含已停用角色）。XML 用 `EXISTS` 筛选用户，再按本页用户 ID 批量取回全部关联角色。列表项的 `user` 是用户摘要，`roles` 包含角色 ID、编码及名称。
 
 ## 管理 API
+
+岗位、公告发布和个人收件箱的接口见[岗位、公告和收件箱](organization-notices.md)。
 
 以下路径均以 `/api/system` 为前缀。权限列列出完整的 Spring Security authority。分页使用 `page=1&size=20`，`size` 可为 1–100。响应为 `{items,total,page,size}`。
 

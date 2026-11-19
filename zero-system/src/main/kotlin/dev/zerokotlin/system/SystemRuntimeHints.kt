@@ -11,9 +11,12 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
     override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
         hints.resources().registerPattern("mapper/system/*.xml")
         hints.resources().registerPattern("db/migration/common/V1__system.sql")
+        hints.resources().registerPattern("db/migration/common/V2__positions_and_announcements.sql")
         listOf(
             UserRecord::class.java,
             DepartmentRecord::class.java,
+            PositionRecord::class.java,
+            AnnouncementRecord::class.java,
             RoleRecord::class.java,
             PermissionRecord::class.java,
             MenuRecord::class.java,
@@ -25,6 +28,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             UserRow::class.java,
             AuthorityRow::class.java,
             AssignedRoleRow::class.java,
+            InboxEntry::class.java,
             PageWindow::class.java,
             UserQuery::class.java,
         ).forEach {
