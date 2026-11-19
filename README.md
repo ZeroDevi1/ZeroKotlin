@@ -7,8 +7,8 @@ ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化脚手架，配套 Vue 3
 项目使用 JDK 25。已使用 vfox 的开发者可在仓库根目录安装并选定项目版本。首次使用 Java 插件时先执行 `vfox add java`。
 
 ```sh
-vfox install java@25.0.5-tem
-vfox use --project java@25.0.5+8-tem
+vfox install java@25+36
+vfox use --project java@25+36
 ./gradlew -q :zero-system:javaToolchains
 ```
 
