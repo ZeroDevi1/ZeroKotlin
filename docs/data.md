@@ -41,7 +41,7 @@ zero:
 
 核心模块共享 Flyway 的版本序列和 `flyway_schema_history`。核心迁移的版本号必须唯一。需要为三种数据库编写不同 SQL 时，可在三个各自的数据库目录中使用同一版本号。系统模块预留 `V1__system.sql`，后续核心变更使用新的版本号。
 
-可移除的业务模块声明一个 `ModuleMigration("模块名")` Bean，在 `db/modules/<模块名>/` 内提供以 V1 起始的可移植 SQL。实际名称使用小写英文字母、数字和下划线。主应用先迁移核心表，再迁移已装配的模块。每个模块有独立的 `zero_history_<模块名>` 表，卸载时保留历史和业务数据，重新装配会从该模块的下一版本继续。
+可移除的业务模块声明一个 `ModuleMigration("orders")` Bean，在 `db/modules/<模块名>/` 内提供以 V1 起始的可移植 SQL。实际名称使用小写英文字母、数字和下划线。主应用先迁移核心表，再迁移已装配的模块。每个模块有独立的 `zero_history_<模块名>` 表，卸载时保留历史和业务数据，重新装配会从该模块的下一版本继续。
 
 Flyway 和应用使用同一个 `DataSource`。目录由本模块按实际选中的数据库设置。配置连接参数时使用 `zero.database`。MyBatis 的 `SqlSessionFactory` 依赖迁移完成后再初始化。
 
@@ -67,7 +67,7 @@ Flyway 和应用使用同一个 `DataSource`。目录由本模块按实际选中
 | `redis.timeout` | `2s` | Lettuce 的 TCP 连接及 Redis 命令超时。 |
 | `redis.key-prefix` | `zero-kotlin:` | 应用键空间前缀。允许字母、数字、点、下划线、冒号和连字符。 |
 
-`auto` 在未配置 `redis.host` 时使用 Caffeine。配置主机后，启动时向 Redis 发出 `PING`。Redis 可用则选用 Redis，连接拒绝、连接超时或地址无法解析时使用 Caffeine。Redis 的认证、证书和其他协议错误会使启动失败。显式 `redis` 模式下，连接失败也会使启动失败。启动选定的缓存实现用于整个进程生命周期。
+`auto` 在未配置 `redis.host` 时使用 Caffeine。配置主机后，启动时向 Redis 发出 `PING`。Redis 可用则选用 Redis，连接拒绝、连接或探测命令超时、地址无法解析时使用 Caffeine。Redis 的认证、证书和其他协议错误会使启动失败。显式 `redis` 模式下，连接失败也会使启动失败。启动选定的缓存实现用于整个进程生命周期。
 
 ```yaml
 zero:

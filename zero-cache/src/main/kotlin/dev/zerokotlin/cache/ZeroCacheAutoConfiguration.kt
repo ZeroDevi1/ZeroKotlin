@@ -2,6 +2,7 @@ package dev.zerokotlin.cache
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.lettuce.core.ClientOptions
+import io.lettuce.core.RedisCommandTimeoutException
 import io.lettuce.core.SocketOptions
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -12,6 +13,7 @@ import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.EnableCaching
 import org.springframework.cache.caffeine.CaffeineCacheManager
 import org.springframework.context.annotation.Bean
+import org.springframework.dao.QueryTimeoutException
 import org.springframework.data.redis.RedisConnectionFailureException
 import org.springframework.data.redis.cache.BatchStrategies
 import org.springframework.data.redis.cache.RedisCacheConfiguration
@@ -30,6 +32,7 @@ import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import tools.jackson.module.kotlin.KotlinModule
 import java.net.ConnectException
 import java.net.NoRouteToHostException
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.nio.channels.UnresolvedAddressException
 
@@ -50,9 +53,9 @@ internal class ZeroCacheAutoConfiguration {
         }
         return try {
             redisCacheManager(properties)
-        } catch (failure: RedisConnectionFailureException) {
+        } catch (failure: RuntimeException) {
             if (properties.mode != CacheMode.AUTO || !isNetworkFailure(failure)) throw failure
-            logger.warn("Redis TCP endpoint unreachable in auto mode")
+            logger.warn("Redis endpoint unavailable during cache selection, using Caffeine")
             caffeineCacheManager(properties)
         }
     }
@@ -132,11 +135,14 @@ internal class ZeroCacheAutoConfiguration {
         }
     }
 
-    private fun isNetworkFailure(failure: RedisConnectionFailureException): Boolean =
-        generateSequence<Throwable>(failure) { it.cause }.any {
-            it is ConnectException || it is NoRouteToHostException ||
-                it is UnknownHostException || it is UnresolvedAddressException
+    private fun isNetworkFailure(failure: RuntimeException): Boolean {
+        if (failure is QueryTimeoutException) return true
+        if (failure !is RedisConnectionFailureException && failure !is RedisCommandTimeoutException) return false
+        return generateSequence<Throwable>(failure) { it.cause }.any {
+            it is ConnectException || it is NoRouteToHostException || it is SocketTimeoutException ||
+                it is RedisCommandTimeoutException || it is UnknownHostException || it is UnresolvedAddressException
         }
+    }
 }
 
 internal class ManagedCacheManager(
