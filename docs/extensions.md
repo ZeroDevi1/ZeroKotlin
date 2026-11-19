@@ -81,6 +81,8 @@ curl -X POST http://localhost:8080/api/extensions/kafka/consume \
 
 ## 添加或移除自己的模块
 
+从零创建模块时，可跟随订单示例完成 Gradle 装配、数据库迁移、行级查询、Swagger 和管理端菜单接入。[新建业务模块](new-module.md)
+
 1. 在 `settings.gradle.kts` 包含新子项目，并在启动模块增加该项目的依赖或构建开关。
 2. 在子项目中依赖 `zero-core`，在 `dev.zerokotlin` 下定义控制器、服务和 Mapper。使用 JPA 的模块声明 `zero-core-jpa` feature。[JPA 依赖配置](data.md#mybatis-plus-与可选-jpa)
 3. 声明一个 `ModuleMigration("orders")` Bean，在 `resources/db/modules/orders/V1__orders.sql` 放置业务表和权限种子。需要菜单时将 `sys_menu.module_name` 设为 `orders`。每个模块独立编号。
