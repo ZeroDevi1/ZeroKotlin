@@ -11,3 +11,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ZeroKotlin"
 include("zero-core", "zero-system", "zero-agent")
+include("zero-codegen")

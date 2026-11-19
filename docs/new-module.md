@@ -33,6 +33,8 @@ zero-orders ── implementation ──▶ zero-core
 
 在仓库根目录新增 `zero-orders`。示例接受订单标题，返回新订单 ID，并分页列出当前用户创建的订单。API 路径为 `/api/orders`，管理端路径为 `/orders`。
 
+已有业务表时，也可以让 `zero-codegen` 根据表结构生成 Kotlin 和 Mapper XML，再在服务中补充本例的订单归属条件。[数据库代码生成](codegen.md)
+
 ### 1. 注册库并装配到启动项目
 
 在根目录 `settings.gradle.kts` 追加新项目，保留已有模块。[当前项目清单](../settings.gradle.kts)

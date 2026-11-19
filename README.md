@@ -48,6 +48,7 @@ pnpm dev
 | --- | --- |
 | zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。Gradle feature 控制 JPA、Elasticsearch 和 Kafka 的可选装配。 |
 | zero-system | Spring Boot 启动入口、模块装配，以及账号、组织、权限、公告和审计等系统业务 |
+| [zero-codegen](docs/codegen.md) | 从业务表结构生成 Kotlin CRUD 和 MyBatis XML 的开发命令行工具 |
 | [zero-agent](zero-agent/README.md) | AgentScope Java v2 示例库。演示新模块如何依赖 `zero-core`，以及如何通过 `-PwithAgent=true` 加入启动包。 |
 | zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
 
