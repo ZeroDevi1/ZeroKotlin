@@ -168,4 +168,11 @@ class SystemInbox(private val announcements: AnnouncementMapper, private val wri
             announcements.insertRead(userId, announcementId, System.currentTimeMillis())
         }
     }
+
+    /** 在系统写入锁内重新认证当前会话，为所有已发布的未读公告记录同一已读时间。 */
+    @Transactional
+    fun markAllRead() {
+        val userId = writes.lockAndAuthenticate().user.id
+        announcements.insertUnreadAsRead(userId, System.currentTimeMillis())
+    }
 }

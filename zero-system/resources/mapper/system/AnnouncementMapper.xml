@@ -31,4 +31,11 @@
         SELECT COUNT(*)
         <include refid="inboxRows"/>
     </select>
+
+    <insert id="insertUnreadAsRead">
+        <bind name="unreadOnly" value="true"/>
+        INSERT INTO sys_announcement_read (user_id, announcement_id, read_at)
+        SELECT #{userId}, a.id, #{now}
+        <include refid="inboxRows"/>
+    </insert>
 </mapper>

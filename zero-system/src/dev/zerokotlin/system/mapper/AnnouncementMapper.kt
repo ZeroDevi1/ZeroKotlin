@@ -63,4 +63,12 @@ interface AnnouncementMapper : BaseMapper<AnnouncementRecord> {
      */
     @Insert("INSERT INTO sys_announcement_read (user_id, announcement_id, read_at) VALUES (#{userId}, #{id}, #{now})")
     fun insertRead(@Param("userId") userId: String, @Param("id") id: String, @Param("now") now: Long)
+
+    /**
+     * 在系统写入锁内为指定用户的所有已发布未读公告插入已读记录，保留原有记录。
+     *
+     * @param userId 标记已读的用户 ID。
+     * @param now 本次新增记录共用的已读时间，单位为 Unix 毫秒。
+     */
+    fun insertUnreadAsRead(@Param("userId") userId: String, @Param("now") now: Long)
 }

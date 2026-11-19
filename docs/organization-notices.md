@@ -34,6 +34,7 @@
 | --- | --- |
 | `GET /api/inbox` | 分页。可传 `unreadOnly=true` 只查询未读，默认包含已读和未读。每项为 `{id,title,body,publishedAt,readAt}`，按 `publishedAt`、`id` 降序。未读的 `readAt` 为 `null`。 |
 | `PUT /api/inbox/{id}/read` | 将当前登录用户的指定公告标为已读。返回 204，重复提交保留首次已读时间。未发布、已撤回或不存在的公告返回 404。 |
+| `PUT /api/inbox/read-all` | 无需请求体。将当前登录用户收件箱所有页中已发布的未读公告标为已读，保留已有的首次已读时间。成功返回空体 204，没有未读公告时也返回 204。 |
 
 收件箱实时查询全局已发布公告与当前账号的已读记录。新账号登录后也能看到仍处于发布状态的公告。撤回提交后，后续收件箱请求即排除该公告。账号身份由服务端会话确定，已读记录按账号和公告唯一。
 
@@ -41,4 +42,4 @@
 
 核心 Flyway 迁移 `V2__positions_and_announcements.sql` 在 V1 后创建岗位、岗位成员、公告和已读表，并注册权限与菜单。岗位写入、成员替换及公告管理操作沿用系统事务锁，操作审计随变更一同提交。标记已读也使用该锁，避免与撤回或同一账号的重复请求交错写入。
 
-功能设计参考 JeecgBoot 的岗位人员维护和个人消息列表。[岗位管理指南](https://help.jeecg.com/java/system/departmentPost/) · [系统消息指南](https://help.jeecg.com/ui/2dev/systemjump/)
+功能设计参考 JeecgBoot 的岗位人员维护、个人消息列表和一键已读。[岗位管理指南](https://help.jeecg.com/java/system/departmentPost/) · [系统消息指南](https://help.jeecg.com/ui/2dev/systemjump/) · [一键已读源码](https://github.com/jeecgboot/JeecgBoot/blob/main/jeecg-boot/jeecg-module-system/jeecg-system-biz/src/main/java/org/jeecg/modules/system/controller/SysAnnouncementSendController.java#L246-L264)

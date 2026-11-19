@@ -18,6 +18,9 @@ const readerHeading = ref<HTMLElement | null>(null)
 const filters = ref<HTMLElement | null>(null)
 const pendingId = ref<string | null>(null)
 const markError = ref('')
+const markingAll = ref(false)
+const markAllError = ref('')
+const readPending = computed(() => pendingId.value !== null || markingAll.value)
 const readingUnread = computed(() => reading.value?.readAt === null && !markedRead.value)
 
 function selectFilter(unread: boolean) {
@@ -40,7 +43,7 @@ async function openMessage(item: InboxItem) {
 }
 
 async function markRead(id: string) {
-  if (!auth.user || pendingId.value !== null || reading.value?.id !== id || !readingUnread.value) return
+  if (!auth.user || readPending.value || reading.value?.id !== id || !readingUnread.value) return
   pendingId.value = id
   markError.value = ''
   try {
@@ -51,6 +54,22 @@ async function markRead(id: string) {
     if (reading.value?.id === id) markError.value = errorMessage(cause, '无法标记为已读。')
   } finally {
     pendingId.value = null
+  }
+}
+
+async function markAllRead() {
+  if (!auth.user || readPending.value) return
+  markingAll.value = true
+  markAllError.value = ''
+  try {
+    await request<void>('/api/inbox/read-all', { method: 'PUT' })
+    if (reading.value) markedRead.value = true
+    markError.value = ''
+    reload()
+  } catch (cause) {
+    markAllError.value = errorMessage(cause, '无法将所有未读公告标为已读。')
+  } finally {
+    markingAll.value = false
   }
 }
 
@@ -82,8 +101,14 @@ async function closeReader() {
               未读
             </button>
           </div>
+          <button type="button" class="btn" :disabled="readPending" @click="markAllRead">
+            {{ markingAll ? '正在标记…' : '一键已读' }}
+          </button>
         </div>
 
+        <p v-if="markAllError" class="notice notice-error list-error" role="alert">
+          一键已读失败：{{ markAllError }}
+        </p>
         <p v-if="loading" class="empty" role="status">正在加载公告…</p>
         <div v-else-if="error" class="notice notice-error list-error" role="alert">
           <p>{{ error }}</p>
@@ -98,7 +123,7 @@ async function closeReader() {
               type="button"
               class="message-row"
               :aria-current="reading?.id === item.id ? 'true' : undefined"
-              :disabled="pendingId !== null && reading?.id !== item.id"
+              :disabled="markingAll || (pendingId !== null && reading?.id !== item.id)"
               @click="openMessage(item)"
             >
               <span class="message-title">{{ item.title }}</span>
@@ -135,7 +160,7 @@ async function closeReader() {
         <p v-if="pendingId === reading.id" class="message-meta" role="status">正在标记为已读…</p>
         <div v-if="markError" class="notice notice-error" role="alert">
           <p>标记已读失败：{{ markError }}</p>
-          <button type="button" class="btn btn-quiet" @click="markRead(reading.id)">重试标记已读</button>
+          <button type="button" class="btn btn-quiet" :disabled="readPending" @click="markRead(reading.id)">重试标记已读</button>
         </div>
         <div class="message-body">{{ reading.body }}</div>
       </article>

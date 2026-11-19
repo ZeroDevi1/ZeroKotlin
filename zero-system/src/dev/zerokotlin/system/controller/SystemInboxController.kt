@@ -68,4 +68,14 @@ class SystemInboxController(private val inbox: SystemInbox) {
         ],
     )
     fun markRead(@PathVariable id: String) = inbox.markRead(id)
+
+    /** 将当前用户收件箱中所有已发布的未读公告标为已读，成功时返回空响应体和 HTTP 204。 */
+    @PutMapping("/read-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+        summary = "一键将收件箱公告标为已读",
+        description = "标记当前用户所有页中的已发布未读公告。已读公告保留首次已读时间。",
+        responses = [ApiResponse(responseCode = "204", description = "已完成标记，包括没有未读公告的情况", content = [Content()])],
+    )
+    fun markAllRead() = inbox.markAllRead()
 }
