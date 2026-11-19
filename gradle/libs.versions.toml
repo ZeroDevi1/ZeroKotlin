@@ -5,12 +5,14 @@ springdoc = "3.2.0"
 swagger-annotations = "2.2.55"
 graal = "1.1.19"
 mybatis-plus = "3.5.18.1"
+agentscope = "2.0.4"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 springdoc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations-jakarta", version.ref = "swagger-annotations" }
+agentscope-core = { module = "io.agentscope:agentscope-core", version.ref = "agentscope" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

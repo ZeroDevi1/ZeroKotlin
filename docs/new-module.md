@@ -1,5 +1,7 @@
 # 新建业务模块
 
+仓库中的 `zero-agent` 演示最小模块。它的 Gradle 脚本声明对 `zero-core` 和 AgentScope SDK 的依赖，由启动模块决定是否装配。下文的 `zero-orders` 教学示例在同一目录结构上增加数据库、权限、HTTP 接口和管理端页面。[zero-agent 模块说明](../zero-agent/README.md) · [zero-agent 构建脚本](../zero-agent/build.gradle.kts)
+
 ## 依赖边界与拆分时机
 
 每个新业务模块直接依赖 `zero-core`。它用 `api` 暴露 Spring MVC、Spring Security、MyBatis-Plus 和 Swagger 注解，并提供 `CurrentActor`、`OperationAudit`、`ModuleMigration` 和分页类型。业务模块通过这些契约获取当前用户、记录审计、注册迁移和描述接口。[核心依赖](../zero-core/build.gradle.kts) · [Gradle Java Library 依赖范围](https://docs.gradle.org/current/userguide/java_library_plugin.html)
@@ -33,10 +35,10 @@ zero-orders ── implementation ──▶ zero-core
 
 ### 1. 注册库并装配到启动项目
 
-更新根目录 `settings.gradle.kts` 的 `include`。[当前项目清单](../settings.gradle.kts)
+在根目录 `settings.gradle.kts` 追加新项目，保留已有模块。[当前项目清单](../settings.gradle.kts)
 
 ```kotlin
-include("zero-core", "zero-system", "zero-orders")
+include("zero-orders")
 ```
 
 创建 `zero-orders/build.gradle.kts`。根构建已经统一配置 JDK 25、`src/` 和 `resources/`。`kotlin.spring` 会开放 Spring 组件供方法鉴权和事务代理使用。示例中的 `@Tag` 和 `@Operation` 由核心模块导出。[根构建配置](../build.gradle.kts) · [核心依赖](../zero-core/build.gradle.kts)

@@ -48,9 +48,10 @@ pnpm dev
 | --- | --- |
 | zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。Gradle feature 控制 JPA、Elasticsearch 和 Kafka 的可选装配。 |
 | zero-system | Spring Boot 启动入口、模块装配，以及账号、组织、权限、公告和审计等系统业务 |
+| [zero-agent](zero-agent/README.md) | AgentScope Java v2 示例库。演示新模块如何依赖 `zero-core`，以及如何通过 `-PwithAgent=true` 加入启动包。 |
 | zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
 
-后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。两个后端模块的 Kotlin 源码根都是 `src/`，包 `dev.zerokotlin.core` 对应 `zero-core/src/dev/zerokotlin/core/`。配置、Mapper XML 和 Flyway SQL 放在模块的 `resources/`。
+后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。后端模块的 Kotlin 源码根都是 `src/`，包 `dev.zerokotlin.core` 对应 `zero-core/src/dev/zerokotlin/core/`。配置、Mapper XML 和 Flyway SQL 放在模块的 `resources/`。
 
 从独立启动模块升级时，若已有 SQLite 文件位于旧启动目录，可用 `ZERO_DATABASE_SQLITE_PATH` 指定该文件的绝对路径，继续使用原有账号和业务数据。
 

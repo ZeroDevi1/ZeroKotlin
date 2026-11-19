@@ -29,6 +29,9 @@ dependencies {
             capabilities { requireCapability("dev.zerokotlin:zero-core-kafka") }
         }
     }
+    if (enabled("withAgent")) {
+        runtimeOnly(project(":zero-agent"))
+    }
 }
 
 tasks.withType<ProcessAot>().configureEach {
