@@ -1,6 +1,0 @@
-dev.zerokotlin.core.config.ZeroCacheAutoConfiguration
-dev.zerokotlin.core.config.DatabaseAutoConfiguration
-dev.zerokotlin.core.config.ZeroNativeConfiguration
-dev.zerokotlin.core.config.BearerSecurityAutoConfiguration
-dev.zerokotlin.core.config.PasswordHashingAutoConfiguration
-dev.zerokotlin.core.config.OpenApiConfiguration

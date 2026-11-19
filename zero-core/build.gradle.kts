@@ -5,12 +5,20 @@ plugins {
 }
 
 val optionalFeatures: List<String> = listOf("jpa", "elasticsearch", "kafka")
-java {
-    optionalFeatures.forEach { feature ->
-        registerFeature(feature) {
-            usingSourceSet(sourceSets.create(feature))
-        }
+optionalFeatures.forEach { feature ->
+    // 变体携带装配标记与可选依赖，Kotlin 源码统一由主源集编译。
+    val markerDirectory = layout.buildDirectory.dir("generated/feature-markers/$feature")
+    val marker = tasks.register<WriteProperties>("write${feature.replaceFirstChar { it.uppercaseChar() }}Marker") {
+        destinationFile.set(markerDirectory.map { it.file("META-INF/zerokotlin/$feature.properties") })
+        property("feature", feature)
     }
+    val variant = sourceSets.create(feature) {
+        java.setSrcDirs(emptyList<String>())
+        resources.setSrcDirs(emptyList<String>())
+        output.dir(mapOf("builtBy" to marker), markerDirectory)
+    }
+    kotlin.sourceSets.named(feature) { kotlin.setSrcDirs(emptyList<String>()) }
+    java.registerFeature(feature) { usingSourceSet(variant) }
 }
 
 dependencies {
@@ -37,6 +45,9 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation(kotlin("reflect"))
     implementation(libs.springdoc.ui)
+
+    compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")
+    compileOnly("org.apache.kafka:kafka-clients")
 
     // feature 依赖主变体，调用方选择 feature 时同时得到核心契约和运行时配置。
     optionalFeatures.forEach { feature ->

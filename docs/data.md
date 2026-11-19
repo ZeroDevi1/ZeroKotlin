@@ -32,7 +32,7 @@ zero:
 
 ## Flyway 迁移
 
-在各模块的 `src/main/resources/db/migration/` 下放置 `V<版本>__<描述>.sql`。应用对选中的数据库从运行时类路径汇集以下目录。
+在各模块的 `resources/db/migration/` 下放置 `V<版本>__<描述>.sql`。应用对选中的数据库从运行时类路径汇集以下目录。
 
 | 位置 | 内容 |
 | --- | --- |
@@ -47,7 +47,7 @@ Flyway 和应用使用同一个 `DataSource`。`zero-core` 按实际选中的数
 
 ## MyBatis-Plus 与可选 JPA
 
-- 业务模块通过 `implementation(project(":zero-core"))` 使用 MyBatis-Plus Boot 4 starter。将 `@Mapper` 接口放在 `dev.zerokotlin` 下，XML 放在各模块的 `src/main/resources/mapper/` 下。`classpath*:/mapper/**/*.xml` 会把它们加载到同一个 `SqlSessionFactory`，XML `namespace` 使用接口的全限定名。
+- 业务模块通过 `implementation(project(":zero-core"))` 使用 MyBatis-Plus Boot 4 starter。将 `@Mapper` 接口放在 `dev.zerokotlin` 下，XML 放在各模块的 `resources/mapper/` 下。`classpath*:/mapper/**/*.xml` 会把它们加载到同一个 `SqlSessionFactory`，XML `namespace` 使用接口的全限定名。
 - 基础 CRUD 可以使用 `BaseMapper`。跨表查询使用 XML Mapper，因为 MPJ 的 `1.5.9` starter 仍以 Boot 3 starter 作为装配依赖，项目采用 Boot 4。在列表方法中传入 `IPage`，分页拦截器按当前 JDBC URL 选择数据库方言。复杂联查可在 XML 中写独立的总数查询，通过分页对象的 `countId` 引用，并为列表排序指定稳定的次序。[MPJ 1.5.9 依赖声明](https://repo.maven.apache.org/maven2/com/github/yulichang/mybatis-plus-join-boot-starter/1.5.9/mybatis-plus-join-boot-starter-1.5.9.pom)
 - 业务模块通过 `zero-core-jpa` feature 引入 Spring Data JPA。实体和仓库沿用 Boot 的应用包扫描。声明 Kotlin 实体的模块应用 `alias(libs.plugins.kotlin.jpa)`，由该插件生成无参构造器并开放实体供 Hibernate 代理。Hibernate 使用同一数据源，通过 JDBC 元数据解析方言，SQLite 由相同版本的 `hibernate-community-dialects` 提供支持。表结构由 Flyway 管理，Hibernate DDL 默认 `none`。[Kotlin JPA 插件](https://kotlinlang.org/docs/kotlin-jpa-plugin.html)
 - 仅引入 MyBatis 时，Boot 4 默认配置 JDBC 的 `JdbcTransactionManager`。启用 JPA 后，Boot 以 `JpaTransactionManager` 作为单一事务管理器，MyBatis 通过 Spring 管理的 JDBC 连接加入同一事务。在服务方法上使用 Spring 的 `@Transactional`。需要 JDBC 紧接着读取 JPA 的写入时，先调用 `flush()`。同一事务中用 JDBC 更新了已被 JPA 加载的实体时，按需 `refresh()` 或清空持久化上下文后重读。

@@ -18,9 +18,21 @@ subprojects {
     pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension> {
             jvmToolchain(25)
+            sourceSets.named("main") { kotlin.setSrcDirs(listOf("src")) }
+            sourceSets.named("test") { kotlin.setSrcDirs(listOf("test")) }
             compilerOptions {
                 javaParameters.set(true)
                 freeCompilerArgs.add("-Xannotation-default-target=param-property")
+            }
+        }
+        extensions.configure<SourceSetContainer> {
+            named("main") {
+                java.setSrcDirs(listOf("src"))
+                resources.setSrcDirs(listOf("resources"))
+            }
+            named("test") {
+                java.setSrcDirs(listOf("test"))
+                resources.setSrcDirs(listOf("test-resources"))
             }
         }
         dependencies {

@@ -83,7 +83,7 @@ curl -X POST http://localhost:8080/api/extensions/kafka/consume \
 
 1. 在 `settings.gradle.kts` 包含新子项目，并在启动模块增加该项目的依赖或构建开关。
 2. 在子项目中依赖 `zero-core`，在 `dev.zerokotlin` 下定义控制器、服务和 Mapper。使用 JPA 的模块声明 `zero-core-jpa` feature。[JPA 依赖配置](data.md#mybatis-plus-与可选-jpa)
-3. 声明一个 `ModuleMigration("orders")` Bean，在 `src/main/resources/db/modules/orders/V1__orders.sql` 放置业务表和权限种子。需要菜单时将 `sys_menu.module_name` 设为 `orders`。每个模块独立编号。
+3. 声明一个 `ModuleMigration("orders")` Bean，在 `resources/db/modules/orders/V1__orders.sql` 放置业务表和权限种子。需要菜单时将 `sys_menu.module_name` 设为 `orders`。每个模块独立编号。
 4. 在服务方法上使用 `@PreAuthorize` 执行权限检查。通过 `CurrentActor` 获取用户 ID，并在写事务中调用 `OperationAudit.record(permission, targetId)` 记录业务操作。
 
 需要直接调用 Elasticsearch 或 Kafka 的业务模块可以在自己的 `build.gradle.kts` 中声明对应的 feature。下例同时选择两项，可按实际用途保留所需依赖。

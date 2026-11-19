@@ -46,11 +46,11 @@ pnpm dev
 
 | 模块 | 职责 |
 | --- | --- |
-| zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。JPA、Elasticsearch、Kafka 由同一项目的 Gradle feature 提供。 |
+| zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。Gradle feature 控制 JPA、Elasticsearch 和 Kafka 的可选装配。 |
 | zero-system | Spring Boot 启动入口、模块装配，以及账号、组织、权限、公告和审计等系统业务 |
 | zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
 
-后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/main/kotlin/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/main/kotlin/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/main/kotlin/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/main/kotlin/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。核心模块的 JPA、Elasticsearch、Kafka 使用独立 Gradle 源集以支持按需打包，源集内部也按职责分层。
+后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。两个后端模块的 Kotlin 源码根都是 `src/`，包 `dev.zerokotlin.core` 对应 `zero-core/src/dev/zerokotlin/core/`。配置、Mapper XML 和 Flyway SQL 放在模块的 `resources/`。
 
 从独立启动模块升级时，若已有 SQLite 文件位于旧启动目录，可用 `ZERO_DATABASE_SQLITE_PATH` 指定该文件的绝对路径，继续使用原有账号和业务数据。
 
@@ -66,6 +66,6 @@ pnpm dev
 
 数据库自动模式只探测已配置的 PostgreSQL、MySQL 地址，均不可达时使用 SQLite。缓存自动模式优先使用已配置且可达的 Redis。数据源与缓存后端在本次进程内固定，切换数据库只改变读写目标，各库独立保存数据。
 
-Web、JPA、健康端点和 Swagger UI 的通用默认值位于 `zero-core/src/main/resources/zero-core-defaults.properties`。部署时可通过应用配置、环境变量或命令行参数覆盖。
+Web、JPA、健康端点和 Swagger UI 的通用默认值位于 `zero-core/resources/zero-core-defaults.properties`。部署时可通过应用配置、环境变量或命令行参数覆盖。
 
 工程划分参考 JeecgBoot 将共享基础设施集中到 `jeecg-boot-base-core` 的做法。组织与权限模型参考 JeecgBoot，Kotlin 业务模块划分参考 zeta-kotlin。[JeecgBoot](https://github.com/jeecgboot/JeecgBoot/tree/main/jeecg-boot/jeecg-boot-base-core) · [zeta-kotlin](https://github.com/xia5800/zeta-kotlin)

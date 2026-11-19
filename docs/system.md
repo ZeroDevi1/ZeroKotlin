@@ -87,7 +87,7 @@
 
 ## 业务模块注册
 
-可选模块声明 `ModuleMigration("orders")` Bean，并在 `src/main/resources/db/modules/orders/V1__orders.sql` 中提供迁移。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
+可选模块声明 `ModuleMigration("orders")` Bean，并在 `resources/db/modules/orders/V1__orders.sql` 中提供迁移。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
 
 ```sql
 INSERT INTO sys_permission (code, name)
