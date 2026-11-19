@@ -63,7 +63,8 @@ async function markAllRead() {
   markAllError.value = ''
   try {
     await request<void>('/api/inbox/read-all', { method: 'PUT' })
-    if (reading.value) markedRead.value = true
+    // 批量响应没有单条结果，当前未确认的公告可能已被撤回。
+    if (readingUnread.value) await closeReader()
     markError.value = ''
     reload()
   } catch (cause) {
