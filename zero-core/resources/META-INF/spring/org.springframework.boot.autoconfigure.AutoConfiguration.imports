@@ -7,5 +7,6 @@ dev.zerokotlin.core.config.KafkaConfiguration
 dev.zerokotlin.core.config.OpenApiConfiguration
 dev.zerokotlin.core.config.PasswordHashingAutoConfiguration
 dev.zerokotlin.core.config.StompBrokerAutoConfiguration
+dev.zerokotlin.core.config.SecurityControlsAutoConfiguration
 dev.zerokotlin.core.config.ZeroCacheAutoConfiguration
 dev.zerokotlin.core.config.ZeroNativeConfiguration

@@ -4,10 +4,12 @@ import dev.zerokotlin.system.entity.DataScope
 import io.swagger.v3.oas.annotations.media.Schema
 
 /**
- * 登录时提交的账号凭据。
+ * 登录时提交的账号凭据和可选挑战。
  *
  * @property username 登录名，校验格式后统一转为小写。
  * @property password 用于验证账号的原始密码。
+ * @property captchaId 验证码启用时必填，取自验证码签发响应。
+ * @property captchaCode 验证码启用时必填，为图片中显示的六位字符。
  */
 @Schema(description = "登录时提交的账号凭据。")
 class LoginRequest(
@@ -15,6 +17,27 @@ class LoginRequest(
     val username: String,
     @field:Schema(description = "用于验证账号的原始密码。", format = "password", accessMode = Schema.AccessMode.WRITE_ONLY)
     val password: String,
+    @field:Schema(description = "启用验证码时必填，取自验证码接口。", accessMode = Schema.AccessMode.WRITE_ONLY)
+    val captchaId: String? = null,
+    @field:Schema(description = "启用验证码时必填，填写图片中的六位字符，字母忽略大小写。", accessMode = Schema.AccessMode.WRITE_ONLY)
+    val captchaCode: String? = null,
+)
+
+/**
+ * 登录验证码的挑战 ID、图像及过期时间。
+ *
+ * @property id 随机生成的一次性挑战 ID。
+ * @property imageBase64 Base64 编码的 PNG。
+ * @property expiresAt 挑战到期的 Unix 毫秒时间戳。
+ */
+@Schema(description = "一次性登录验证码。")
+data class LoginCaptcha(
+    @field:Schema(description = "登录时提交的挑战 ID。", minLength = 43, maxLength = 43)
+    val id: String,
+    @field:Schema(description = "Base64 编码的 PNG，前端可加上 data:image/png;base64, 前缀展示。", format = "byte")
+    val imageBase64: String,
+    @field:Schema(description = "验证码过期时间，单位为 Unix 毫秒。", format = "int64")
+    val expiresAt: Long,
 )
 
 /**

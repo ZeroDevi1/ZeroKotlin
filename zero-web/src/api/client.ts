@@ -45,7 +45,8 @@ async function send(path: string, options: RequestOptions, accept: string): Prom
     throw new Error('API 路径必须位于同源的 /api/ 下。')
   }
 
-  const token = url.pathname === '/api/auth/login' ? undefined : accessToken
+  const publicAuth = url.pathname === '/api/auth/login' || url.pathname === '/api/auth/captcha'
+  const token = publicAuth ? undefined : accessToken
   const headers = new Headers({ Accept: accept })
   if (token) headers.set('Authorization', `Bearer ${token}`)
   let body: BodyInit | undefined

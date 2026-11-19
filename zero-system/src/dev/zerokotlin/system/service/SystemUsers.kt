@@ -3,6 +3,7 @@ package dev.zerokotlin.system.service
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.core.security.PlainTextInput
 import dev.zerokotlin.core.security.hashPassword
 import dev.zerokotlin.system.dto.AssignedRole
 import dev.zerokotlin.system.dto.CreateUserRequest
@@ -31,7 +32,7 @@ import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
 import dev.zerokotlin.system.support.ExcelImportRow
 import dev.zerokotlin.system.support.atExcelRow
 import dev.zerokotlin.system.support.checkedPassword
-import dev.zerokotlin.system.support.checkedText
+import dev.zerokotlin.system.support.checkedPlainText
 import dev.zerokotlin.system.support.conflict
 import dev.zerokotlin.system.support.invalid
 import dev.zerokotlin.system.support.missing
@@ -61,6 +62,7 @@ private fun UserRow.summary() = UserSummary(id, username, displayName, departmen
  * @property sessions 在账号停用或设置新密码后删除会话。
  * @property passwords 为新账号或新密码生成密码哈希。
  * @property writes 串行化写入，重新授权并在写事务中记录操作审计。
+ * @property plainText 可启用的用户显示名清理器。
  */
 @Service
 class SystemUsers(
@@ -71,6 +73,7 @@ class SystemUsers(
     private val sessions: SessionMapper,
     private val passwords: PasswordEncoder,
     private val writes: SystemWrites,
+    private val plainText: PlainTextInput,
 ) {
     /**
      * 在只读事务中按用户读取权限的数据范围查询账号，并批量补齐已分配的角色。
@@ -150,7 +153,7 @@ class SystemUsers(
     /** 校验账号文本并为初始密码生成哈希，准备插入记录。 */
     private fun prepareAccount(request: CreateUserRequest): UserRecord {
         val username = normalizeUsername(request.username) ?: invalid("用户名格式无效")
-        val displayName = checkedText(request.displayName, "displayName")
+        val displayName = plainText.checkedPlainText(request.displayName, "displayName")
         val passwordHash = passwords.hashPassword(checkedPassword(request.password))
         return UserRecord(newId(), username, displayName, passwordHash, request.departmentId)
     }
@@ -175,7 +178,7 @@ class SystemUsers(
      */
     @Transactional
     fun updateProfile(id: String, request: UserProfileRequest): UserSummary {
-        val displayName = checkedText(request.displayName, "displayName")
+        val displayName = plainText.checkedPlainText(request.displayName, "displayName")
         val actor = writes.authorize(USER_UPDATE)
         val user = visibleUser(id, actor, USER_UPDATE)
         users.update(null, UpdateWrapper<UserRecord>().eq("id", user.id).set("display_name", displayName))

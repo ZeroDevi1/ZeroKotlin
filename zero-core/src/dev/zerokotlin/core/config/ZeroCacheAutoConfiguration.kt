@@ -28,6 +28,7 @@ import org.springframework.data.redis.connection.RedisPassword
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer
 import org.springframework.data.redis.serializer.JacksonObjectReader
 import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
@@ -133,7 +134,7 @@ internal class ZeroCacheAutoConfiguration {
             val writer = RedisCacheWriter.nonLockingRedisCacheWriter(factory, BatchStrategies.scan(1000))
             val manager = RedisCacheManager.builder(writer).cacheDefaults(config).build().apply { afterPropertiesSet() }
             logger.info("Selected cache: redis")
-            return ManagedCacheManager(manager, factory::destroy)
+            return ManagedCacheManager(manager, StringRedisTemplate(factory), factory::destroy)
         } catch (failure: RuntimeException) {
             runCatching(factory::destroy).exceptionOrNull()?.let(failure::addSuppressed)
             throw failure
@@ -185,10 +186,12 @@ internal class ZeroCacheAutoConfiguration {
  * 将缓存操作委托给选定后端，并在关闭时释放该后端的外部资源。
  *
  * @param delegate 实际处理 Spring Cache 操作的管理器。
+ * @property redis Redis 模式下供原子安全操作复用的字符串模板，与缓存共用连接工厂。
  * @property onClose 关闭时调用的资源清理动作，默认不执行任何操作。
  */
 internal class ManagedCacheManager(
     delegate: CacheManager,
+    val redis: StringRedisTemplate? = null,
     private val onClose: () -> Unit = {},
 ) : CacheManager by delegate, AutoCloseable {
     /** 调用构造时提供的资源清理动作。 */

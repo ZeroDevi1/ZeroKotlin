@@ -49,4 +49,8 @@ class SystemSecurity {
      */
     @Bean
     fun systemLoginOperation() = PublicApiOperation(HttpMethod.POST, "/api/auth/login")
+
+    /** 允许未登录客户端查询并签发登录验证码。 */
+    @Bean
+    fun systemCaptchaOperation() = PublicApiOperation(HttpMethod.GET, "/api/auth/captcha")
 }

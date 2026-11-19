@@ -16,9 +16,11 @@ import dev.zerokotlin.system.support.newId
 import dev.zerokotlin.system.support.normalizeUsername
 import dev.zerokotlin.system.support.query
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.server.ResponseStatusException
 
 /**
  * 验证登录凭据，在会话事务中记录成功登录，并在登录失败时单独写入审计。
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional
  * @property passwords 校验提交的密码是否与持久化哈希匹配。
  * @property transactions 在事务内复核账号并创建会话。
  * @property loginAudit 保存未能建立会话的登录尝试。
+ * @property captcha 在启用时先核销登录挑战。
  */
 @Service
 class SystemAuthentication(
@@ -34,27 +37,36 @@ class SystemAuthentication(
     private val passwords: PasswordEncoder,
     private val transactions: SystemSessionTransactions,
     private val loginAudit: LoginAuditMapper,
+    private val captcha: SystemLoginCaptcha,
 ) {
     /** 没有匹配账号时用于密码校验的占位哈希，让符合长度要求的密码仍经过哈希比对。 */
     private val dummyHash = passwords.hashPassword(BearerTokens.issue())
 
     /**
-     * 校验密码及账号启用状态，再尝试建立会话。未建立会话时写入失败审计。
+     * 先校验验证码，再校验密码及账号启用状态并尝试建立会话。认证失败时写入失败审计。
      *
-     * @param request 用户提交的用户名和密码。
+     * @param request 用户提交的用户名、密码和验证码。
      * @param address 写入登录审计的远端地址，HTTP 入口最多传入 128 个字符。
      * @return 创建会话后返回 Bearer 令牌及过期时刻，认证失败或写入前账号已变化时返回 null。
+     * @throws ResponseStatusException 验证码缺失、错误、过期或已核销时返回 HTTP 400。
      */
     fun login(request: LoginRequest, address: String): LoginResponse? {
         val username = normalizeUsername(request.username)
+        if (!captcha.verify(request.captchaId, request.captchaCode)) {
+            recordFailure(null, username, address)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码错误或已失效，请刷新后重试。")
+        }
         val user = username?.let { users.selectOne(query<UserRecord>().eq("username", it)) }
         val matches = acceptableLoginPassword(request.password) &&
             passwords.matches(request.password, user?.passwordHash ?: dummyHash)
         val result = if (matches && user != null && user.enabled == 1) transactions.open(user, address) else null
-        if (result == null) {
-            loginAudit.insert(LoginAuditRecord(newId(), user?.id, username, 0, address, System.currentTimeMillis()))
-        }
+        if (result == null) recordFailure(user?.id, username, address)
         return result
+    }
+
+    /** 写入失败尝试，保留已确认的账号 ID、规范化登录名和请求对端地址。 */
+    private fun recordFailure(userId: String?, username: String?, address: String) {
+        loginAudit.insert(LoginAuditRecord(newId(), userId, username, 0, address, System.currentTimeMillis()))
     }
 }
 

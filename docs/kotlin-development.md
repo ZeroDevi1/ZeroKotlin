@@ -190,7 +190,7 @@ private fun lookupLabel(result: UserLookup): String = when (result) {
 ### 分层校验参数
 
 1. 在 HTTP 边界声明请求类型、可空性和默认值。分页交给 `PageWindow`，它要求 `page >= 1`、`size in 1..100`，越界抛出 HTTP 400。`PageResult.total` 表示应用可见范围和筛选条件后的总记录数。[分页类型](../zero-core/src/dev/zerokotlin/core/PageResult.kt)
-2. 在服务中做字段规范化和业务校验。公告服务用 `checkedText` 去除标题和正文的首尾空白，再检查非空及长度。权限检查与当前状态确认在写事务内完成，状态不允许变更时抛出 HTTP 409。项目通过 `invalid`、`missing`、`conflict` 分别表达 HTTP 400、404、409。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt#L62) · [校验辅助函数](../zero-system/src/dev/zerokotlin/system/support/SystemSupport.kt#L66)
+2. 在服务中做字段规范化和业务校验。公告服务用 `checkedPlainText` 校验标题，并在启用配置时清理 HTML 标记。正文用 `checkedText` 去除首尾空白并检查非空及长度。权限检查与当前状态确认在写事务内完成，状态不允许变更时抛出 HTTP 409。项目通过 `invalid`、`missing`、`conflict` 分别表达 HTTP 400、404、409。[公告服务](../zero-system/src/dev/zerokotlin/system/service/SystemAnnouncements.kt) · [安全控制](security-controls.md)
 3. 在数据库维护最终约束。比如公告迁移用 `CHECK` 保证草稿无发布时间，已发布和已撤回状态拥有发布时间。[公告迁移](../zero-system/resources/db/migration/common/V2__positions_and_announcements.sql#L22)
 
 教学例里的 `require(limit >= 0)` 适用于函数调用方的前置条件，失败抛出 `IllegalArgumentException`。当前系统接口的业务校验沿用上述 HTTP 错误辅助函数。若其他模块已配置 Jakarta Bean Validation，可在请求 DTO 的主构造器属性上使用 `@field:NotBlank` 等字段约束，并在控制器的 `@RequestBody` 参数上加 `@Valid` 来触发校验。`@field:` 明确把注解加到 JVM 字段。[Kotlin 注解目标](https://kotlinlang.org/docs/annotations.html#annotation-use-site-targets) · [Spring MVC 校验](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-validation.html)

@@ -26,12 +26,15 @@
 
 | 方法和路径 | 结果 |
 | --- | --- |
-| `POST /api/auth/login` | 公开。成功返回 200，用户名或密码错误、账号禁用时返回 401。 |
+| `GET /api/auth/captcha` | 公开。启用时返回一次性验证码，关闭时返回 204。 |
+| `POST /api/auth/login` | 公开。成功返回 200，凭据错误或账号禁用时返回 401。验证码校验失败返回 400，超额返回 429。 |
 | `POST /api/auth/logout` | 需要登录。当前会话退出后返回 204。 |
 | `GET /api/auth/me` | 需要登录。返回 `id`、`username`、`displayName`、`departmentId`、`administrator` 和 `permissions`。 |
 | `GET /api/auth/me/menus` | 需要登录。返回当前用户可见的菜单树。 |
 
 `GET /actuator/health`、`/v3/api-docs` 及 Swagger UI 的 GET 请求可匿名访问。启用存活和就绪探针时，其 GET 端点也可匿名访问。其他端点要求 Bearer 认证。
+
+启用登录验证码后，请在登录请求中附带挑战 ID 和图片中的字符。登录审计响应也可启用地址脱敏。[安全控制](security-controls.md)
 
 ## 权限与行级范围
 

@@ -1,6 +1,7 @@
 package dev.zerokotlin.system.support
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper
+import dev.zerokotlin.core.security.PlainTextInput
 import java.util.Locale
 import java.util.UUID
 import org.springframework.http.HttpStatus
@@ -66,6 +67,10 @@ fun checkedCode(value: String): String =
 fun checkedText(value: String, field: String, maxLength: Int = 120): String =
     value.trim().takeIf { it.isNotEmpty() && it.length <= maxLength }
         ?: invalid("$field 不能为空且最多为 $maxLength 字符")
+
+/** 普通文本在清理前检查长度，清理后再次检查非空及长度。 */
+internal fun PlainTextInput.checkedPlainText(value: String, field: String): String =
+    checkedText(clean(checkedText(value, field)), field)
 
 /**
  * 校验新密码的长度，供后续保存密码哈希使用。

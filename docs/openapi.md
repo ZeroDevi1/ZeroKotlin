@@ -10,7 +10,7 @@
 
 ## 用登录账号调试
 
-1. 在 Swagger UI 找到 `POST /api/auth/login`，点击 **Try it out**。填写当前部署的账号和密码后点击 **Execute**。
+1. 在 Swagger UI 找到 `POST /api/auth/login`，点击 **Try it out**。填写当前部署的账号和密码后点击 **Execute**。启用验证码时，须先请求 `GET /api/auth/captcha`，解码响应中的 PNG 并填写 `captchaId` 和 `captchaCode`。[验证码约定](security-controls.md#一次性登录验证码)
 2. 从成功响应中复制 `accessToken`。点击页面上的 **Authorize**，在 `bearerAuth` 中粘贴令牌本身。Swagger UI 会为后续请求添加 `Authorization: Bearer …`。
 3. 调用 `GET /api/auth/me` 查看登录主体、内置管理员标志及各权限的数据范围。再调用 `GET /api/system/users?page=1&size=20`，具备用户读取权限的账号将看到自己有权访问的记录。
 4. 完成调试后调用 `POST /api/auth/logout` 注销服务端会话，再在 **Authorize** 面板清除浏览器中的令牌。

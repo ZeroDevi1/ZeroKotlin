@@ -3,6 +3,7 @@ package dev.zerokotlin.system.service
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.core.security.PlainTextInput
 import dev.zerokotlin.system.dto.AnnouncementEntry
 import dev.zerokotlin.system.dto.AnnouncementRequest
 import dev.zerokotlin.system.dto.CreatedResource
@@ -12,6 +13,7 @@ import dev.zerokotlin.system.entity.AnnouncementStatus
 import dev.zerokotlin.system.mapper.AnnouncementMapper
 import dev.zerokotlin.system.security.ANNOUNCEMENT_WRITE
 import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.support.checkedPlainText
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
 import dev.zerokotlin.system.support.missing
@@ -28,11 +30,13 @@ private const val ANNOUNCEMENT_BODY_MAX_LENGTH = 16_000
  *
  * @property announcements 读写公告及其状态。
  * @property writes 串行化写入，重新校验公告写入权限并记录审计。
+ * @property plainText 可启用的公告标题清理器。
  */
 @Service
 class SystemAnnouncements(
     private val announcements: AnnouncementMapper,
     private val writes: SystemWrites,
+    private val plainText: PlainTextInput,
 ) {
     /**
      * 在只读事务中查询管理用公告列表。
@@ -64,7 +68,7 @@ class SystemAnnouncements(
         val now = System.currentTimeMillis()
         val announcement = AnnouncementRecord(
             id = newId(),
-            title = checkedText(request.title, "title"),
+            title = plainText.checkedPlainText(request.title, "title"),
             body = checkedText(request.body, "body", ANNOUNCEMENT_BODY_MAX_LENGTH),
             createdAt = now,
             updatedAt = now,
@@ -86,7 +90,7 @@ class SystemAnnouncements(
         val announcement = announcements.selectById(id) ?: missing("公告")
         if (announcement.status != AnnouncementStatus.DRAFT.name) conflict("仅草稿公告可以修改")
 
-        announcement.title = checkedText(request.title, "title")
+        announcement.title = plainText.checkedPlainText(request.title, "title")
         announcement.body = checkedText(request.body, "body", ANNOUNCEMENT_BODY_MAX_LENGTH)
         announcement.updatedAt = System.currentTimeMillis()
         announcements.updateById(announcement)

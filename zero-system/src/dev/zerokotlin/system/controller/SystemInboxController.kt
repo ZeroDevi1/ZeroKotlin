@@ -2,11 +2,14 @@ package dev.zerokotlin.system.controller
 
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.core.security.ApiRateLimit
+import dev.zerokotlin.core.security.RateLimitBy
 import dev.zerokotlin.system.dto.InboxEntry
 import dev.zerokotlin.system.service.SystemInbox
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
+import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -71,11 +74,21 @@ class SystemInboxController(private val inbox: SystemInbox) {
 
     /** 将当前用户收件箱中所有已发布的未读公告标为已读，成功时返回空响应体和 HTTP 204。 */
     @PutMapping("/read-all")
+    @ApiRateLimit(key = "inbox.read-all", requests = 20, windowSeconds = 60, by = RateLimitBy.USER)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
         summary = "一键将收件箱公告标为已读",
         description = "标记当前用户所有页中的已发布未读公告。已读公告保留首次已读时间。",
-        responses = [ApiResponse(responseCode = "204", description = "已完成标记，包括没有未读公告的情况", content = [Content()])],
+        responses = [
+            ApiResponse(responseCode = "204", description = "已完成标记，包括没有未读公告的情况", content = [Content()]),
+            ApiResponse(
+                responseCode = "429",
+                description = "当前用户超出请求配额",
+                headers = [Header(name = "Retry-After", description = "距允许再次请求的秒数。")],
+                content = [Content()],
+            ),
+            ApiResponse(responseCode = "503", description = "安全状态存储暂时不可用"),
+        ],
     )
     fun markAllRead() = inbox.markAllRead()
 }

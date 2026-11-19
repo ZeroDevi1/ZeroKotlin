@@ -16,6 +16,12 @@ interface SessionToken {
   expiresAt: number
 }
 
+export interface LoginCaptcha {
+  id: string
+  imageBase64: string
+  expiresAt: number
+}
+
 const storageKey = 'zerokotlin.session'
 
 function loadToken(): SessionToken | undefined {
@@ -104,8 +110,15 @@ export function refreshSession(): Promise<void> {
   return promise
 }
 
-export async function signIn(username: string, password: string) {
-  const value = await request<SessionToken>('/api/auth/login', { method: 'POST', body: { username, password } })
+export function getLoginCaptcha(signal: AbortSignal) {
+  return request<LoginCaptcha | undefined>('/api/auth/captcha', { signal })
+}
+
+export async function signIn(username: string, password: string, captcha?: { id: string; code: string }) {
+  const value = await request<SessionToken>('/api/auth/login', {
+    method: 'POST',
+    body: { username, password, captchaId: captcha?.id, captchaCode: captcha?.code },
+  })
   session.expired = false
   storeToken(value)
   await refreshSession()
