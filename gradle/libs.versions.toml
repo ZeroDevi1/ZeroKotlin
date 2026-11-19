@@ -3,6 +3,7 @@ kotlin = "2.4.21"
 spring-boot = "4.1.2"
 springdoc = "3.2.0"
 graal = "1.1.19"
+mybatis-plus = "3.5.18.1"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
