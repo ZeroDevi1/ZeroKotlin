@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   MessageCircle,
   FolderOpen,
   BookOpen, Briefcase, ClipboardList, Inbox, KeyRound, LayoutGrid, Megaphone, Network, Shield, Users,
@@ -33,6 +34,7 @@ const systemPages: Page[] = [
   { path: '/announcements', label: '公告管理', icon: Megaphone, authority: 'system:announcement:read', view: () => import('@/views/AnnouncementsView.vue') },
   { path: '/files', label: '文件管理', icon: FolderOpen, authority: 'system:file:read', view: () => import('@/views/FilesView.vue') },
   { path: '/realtime', label: '实时消息', icon: MessageCircle, authority: 'system:message:read', view: () => import('@/views/RealtimeView.vue') },
+  { path: '/jobs', label: '定时任务', icon: CalendarClock, authority: 'system:job:read', view: () => import('@/views/JobsView.vue') },
 ]
 
 // 扩展页面须先注册固定路由，再通过服务端菜单发布。

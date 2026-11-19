@@ -12,12 +12,14 @@ import dev.zerokotlin.system.entity.DepartmentRecord
 import dev.zerokotlin.system.entity.DictionaryItemRecord
 import dev.zerokotlin.system.entity.DictionaryRecord
 import dev.zerokotlin.system.entity.FileRecord
+import dev.zerokotlin.system.entity.JobRunRecord
 import dev.zerokotlin.system.entity.LoginAuditRecord
 import dev.zerokotlin.system.entity.MenuRecord
 import dev.zerokotlin.system.entity.OperationAuditRecord
 import dev.zerokotlin.system.entity.PermissionRecord
 import dev.zerokotlin.system.entity.PositionRecord
 import dev.zerokotlin.system.entity.RoleRecord
+import dev.zerokotlin.system.entity.ScheduledJobRecord
 import dev.zerokotlin.system.entity.SessionRecord
 import dev.zerokotlin.system.entity.UserRecord
 import org.springframework.aot.hint.MemberCategory.ACCESS_DECLARED_FIELDS
@@ -38,6 +40,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
         hints.resources().registerPattern("mapper/system/*.xml")
         hints.resources().registerPattern("db/migration/common/V1__system.sql")
         hints.resources().registerPattern("db/migration/common/V2__positions_and_announcements.sql")
+        hints.resources().registerPattern("db/migration/common/V6__scheduled_jobs.sql")
         listOf(
             UserRecord::class.java,
             DepartmentRecord::class.java,
@@ -52,6 +55,8 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             SessionRecord::class.java,
             LoginAuditRecord::class.java,
             OperationAuditRecord::class.java,
+            ScheduledJobRecord::class.java,
+            JobRunRecord::class.java,
             UserRow::class.java,
             AuthorityRow::class.java,
             AssignedRoleRow::class.java,

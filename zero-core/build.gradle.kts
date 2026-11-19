@@ -29,6 +29,8 @@ dependencies {
     api("org.springframework.boot:spring-boot-starter-websocket")
     api("org.springframework.boot:spring-boot-starter-security")
     api("org.springframework.boot:spring-boot-starter-cache")
+    api("org.quartz-scheduler:quartz")
+    implementation("org.springframework:spring-context-support")
 
     val mybatisPlusVersion = libs.versions.mybatis.plus.get()
     api("com.baomidou:mybatis-plus-spring-boot4-starter:$mybatisPlusVersion")

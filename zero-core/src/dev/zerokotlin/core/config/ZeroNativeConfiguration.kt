@@ -20,6 +20,7 @@ internal class ZeroNativeHints : RuntimeHintsRegistrar {
      */
     override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
         hints.resources().registerPattern("zero-core-defaults.properties")
+        hints.resources().registerPattern("org/quartz/core/quartz-build.properties")
         hints.resources().registerPattern("META-INF/zerokotlin/*.properties")
         hints.resources().registerPattern("db/migration/common/**")
         hints.resources().registerPattern("db/migration/sqlite/**")
