@@ -9,7 +9,7 @@ ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化脚手架，配套 Vue 3
 ```sh
 vfox install java@25.0.5-tem
 vfox use --project java@25.0.5+8-tem
-./gradlew -q :zero-app:javaToolchains
+./gradlew -q :zero-system:javaToolchains
 ```
 
 Gradle 会从 `.vfox/sdks/java` 查找本项目的工具链，也支持自动发现已安装的其他 JDK 25。工具链报告应显示 `Language Version: 25` 和 `Is JDK: true`。
@@ -24,7 +24,7 @@ printf '首次管理员密码（输入时隐藏） '
 read -rs ZERO_SYSTEM_ADMIN_PASSWORD
 printf '\n'
 export ZERO_SYSTEM_ADMIN_PASSWORD
-./gradlew :zero-app:bootRun
+./gradlew :zero-system:bootRun
 ```
 
 应用在空用户表中创建首个管理员。后续启动可以移除这两个环境变量。运行期间可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
@@ -47,9 +47,12 @@ pnpm dev
 | 模块 | 职责 |
 | --- | --- |
 | zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。JPA、Elasticsearch、Kafka 由同一项目的 Gradle feature 提供。 |
-| zero-system | 账号、角色、权限、部门、菜单、字典、令牌会话和审计 |
-| zero-app | 应用启动与模块装配 |
+| zero-system | Spring Boot 启动入口、模块装配，以及账号、组织、权限、公告和审计等系统业务 |
 | zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
+
+后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/main/kotlin/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/main/kotlin/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/main/kotlin/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/main/kotlin/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。核心模块的 JPA、Elasticsearch、Kafka 使用独立 Gradle 源集以支持按需打包，源集内部也按职责分层。
+
+从独立启动模块升级时，若已有 SQLite 文件位于旧启动目录，可用 `ZERO_DATABASE_SQLITE_PATH` 指定该文件的绝对路径，继续使用原有账号和业务数据。
 
 ## 配置与二次开发
 

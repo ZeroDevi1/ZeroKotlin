@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, shallowRef } from 'vue'
 import { request } from '@/api/client'
-import { useAuth } from '@/auth'
-import PositionMembers from '@/features/organization/PositionMembers.vue'
-import ResourcePager from '@/features/organization/ResourcePager.vue'
-import { errorMessage, useResourcePage, type Position } from '@/features/organization/resources'
+import { useAuth } from '@/store/auth'
+import PositionMembers from '@/components/PositionMembers.vue'
+import ResourcePager from '@/components/ResourcePager.vue'
+import { errorMessage, useResourcePage, type Position } from '@/hooks/useResourcePage'
 
 const auth = useAuth()
 const canRead = computed(() => auth.can('system:position:read'))

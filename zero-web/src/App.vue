@@ -2,10 +2,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { LogOut, Menu, PanelTop, X } from '@lucide/vue'
 import { useRoute } from 'vue-router'
-import { session, signOut, useAuth } from '@/auth'
+import { session, signOut, useAuth } from '@/store/auth'
 import BrandMark from '@/components/BrandMark.vue'
-import NavBranch from '@/components/NavBranch.vue'
-import { findNavigation, inbox } from '@/navigation'
+import NavBranch from '@/layouts/NavBranch.vue'
+import { findNavigation, inbox } from '@/router/navigation'
 import { navigation, router } from '@/router'
 
 const auth = useAuth()

@@ -7,10 +7,10 @@
 使用 GraalVM JDK 25，并在 `JAVA_HOME` 指定该 JDK。系统需要该平台的 Native Image 编译工具链。
 
 ```bash
-./gradlew :zero-app:nativeCompile
+./gradlew :zero-system:nativeCompile
 ```
 
-生成路径为 `zero-app/build/native/nativeCompile/zero-kotlin`，Windows 可执行文件带 `.exe`。仅需生成 Spring AOT 元数据时，可执行 `./gradlew :zero-app:processAot`。
+生成路径为 `zero-system/build/native/nativeCompile/zero-kotlin`，Windows 可执行文件带 `.exe`。仅需生成 Spring AOT 元数据时，可执行 `./gradlew :zero-system:processAot`。
 
 Gradle 为 `processAot` 指定 SQLite 和 Caffeine。处理器在构建时准备 Bean 定义和 Native Image 元数据，数据库连接、Flyway 迁移和首次管理员初始化属于应用运行期。默认构建只装配 `zero-core` 主变体和 `zero-system`。
 
@@ -25,7 +25,7 @@ Gradle 为 `processAot` 指定 SQLite 和 Caffeine。处理器在构建时准备
 
 ```bash
 ZERO_DATABASE_MODE=sqlite ZERO_CACHE_MODE=caffeine \
-  ./zero-app/build/native/nativeCompile/zero-kotlin
+  ./zero-system/build/native/nativeCompile/zero-kotlin
 ```
 
 数据库默认写入 `data/zero-kotlin.db`，可用 `ZERO_DATABASE_SQLITE_PATH` 指定可写位置。核心与可选模块有各自的 Flyway 历史表。首次管理员配置见 [系统说明](system.md)。

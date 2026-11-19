@@ -1,1 +1,1 @@
-dev.zerokotlin.messaging.KafkaConfiguration
+dev.zerokotlin.core.config.KafkaConfiguration

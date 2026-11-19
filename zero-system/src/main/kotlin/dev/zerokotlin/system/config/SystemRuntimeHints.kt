@@ -1,0 +1,55 @@
+package dev.zerokotlin.system.config
+
+import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.system.dto.AssignedRoleRow
+import dev.zerokotlin.system.dto.AuthorityRow
+import dev.zerokotlin.system.dto.InboxEntry
+import dev.zerokotlin.system.dto.UserQuery
+import dev.zerokotlin.system.dto.UserRow
+import dev.zerokotlin.system.entity.AnnouncementRecord
+import dev.zerokotlin.system.entity.DepartmentRecord
+import dev.zerokotlin.system.entity.DictionaryItemRecord
+import dev.zerokotlin.system.entity.DictionaryRecord
+import dev.zerokotlin.system.entity.LoginAuditRecord
+import dev.zerokotlin.system.entity.MenuRecord
+import dev.zerokotlin.system.entity.OperationAuditRecord
+import dev.zerokotlin.system.entity.PermissionRecord
+import dev.zerokotlin.system.entity.PositionRecord
+import dev.zerokotlin.system.entity.RoleRecord
+import dev.zerokotlin.system.entity.SessionRecord
+import dev.zerokotlin.system.entity.UserRecord
+import org.springframework.aot.hint.MemberCategory.ACCESS_DECLARED_FIELDS
+import org.springframework.aot.hint.MemberCategory.INVOKE_DECLARED_CONSTRUCTORS
+import org.springframework.aot.hint.MemberCategory.INVOKE_PUBLIC_METHODS
+import org.springframework.aot.hint.RuntimeHints
+import org.springframework.aot.hint.RuntimeHintsRegistrar
+
+class SystemRuntimeHints : RuntimeHintsRegistrar {
+    override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
+        hints.resources().registerPattern("mapper/system/*.xml")
+        hints.resources().registerPattern("db/migration/common/V1__system.sql")
+        hints.resources().registerPattern("db/migration/common/V2__positions_and_announcements.sql")
+        listOf(
+            UserRecord::class.java,
+            DepartmentRecord::class.java,
+            PositionRecord::class.java,
+            AnnouncementRecord::class.java,
+            RoleRecord::class.java,
+            PermissionRecord::class.java,
+            MenuRecord::class.java,
+            DictionaryRecord::class.java,
+            DictionaryItemRecord::class.java,
+            SessionRecord::class.java,
+            LoginAuditRecord::class.java,
+            OperationAuditRecord::class.java,
+            UserRow::class.java,
+            AuthorityRow::class.java,
+            AssignedRoleRow::class.java,
+            InboxEntry::class.java,
+            PageWindow::class.java,
+            UserQuery::class.java,
+        ).forEach {
+            hints.reflection().registerType(it, ACCESS_DECLARED_FIELDS, INVOKE_DECLARED_CONSTRUCTORS, INVOKE_PUBLIC_METHODS)
+        }
+    }
+}

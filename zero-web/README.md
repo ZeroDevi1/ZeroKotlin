@@ -4,7 +4,7 @@ Vue 3、TypeScript 与 Vue Router 实现的系统管理界面。前端使用后�
 
 ## 本地启动
 
-1. 按[项目说明](../README.md#首次启动)启动 `zero-app` 并初始化内置管理员。
+1. 按[项目说明](../README.md#首次启动)启动 `zero-system` 并初始化内置管理员。
 2. 在 `zero-web` 目录中使用 Node.js 22.12 及以上版本和 `package.json` 指定的 pnpm 版本安装依赖。
 3. 启动 Vite。打开终端输出的 URL，用初始化的管理员账号登录。
 
@@ -34,7 +34,7 @@ Vite 将同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其�
 | 公告管理 | `/announcements` | `system:announcement:read` |
 | 收件箱 | `/inbox` | 登录 |
 
-扩展页面先在 [navigation.ts](src/navigation.ts) 的 `extensionPages` 注册固定路由、页面组件和页面权限，再使用[模块迁移或系统 API](../docs/system.md)发布含同一路径的菜单节点。已注册且有权访问的路径可成为导航链接。工作台支持任意层级的菜单分组。
+扩展页面先在 [navigation.ts](src/router/navigation.ts) 的 `extensionPages` 注册固定路由、页面组件和页面权限，再使用[模块迁移或系统 API](../docs/system.md)发布含同一路径的菜单节点。已注册且有权访问的路径可成为导航链接。工作台支持任意层级的菜单分组。
 
 ## 部署
 

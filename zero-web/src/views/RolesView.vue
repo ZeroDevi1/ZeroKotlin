@@ -3,12 +3,12 @@ import { computed, reactive, ref, watch } from 'vue'
 import { Plus } from '@lucide/vue'
 import { request } from '@/api/client'
 import { adminRoleId, apiPath, codePattern, dataScopes, type DataScope, type PermissionSummary, type RoleDetails, type RoleSummary } from '@/api/system'
-import { useAuth } from '@/auth'
+import { useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
 import StatusChip from '@/components/StatusChip.vue'
-import { useAction, usePage, useResource } from '@/queries'
+import { useAction, usePage, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const mayWrite = computed(() => auth.user?.administrator && auth.can('system:role:write'))

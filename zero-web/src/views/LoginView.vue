@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { ArrowRight } from '@lucide/vue'
 import { useRoute } from 'vue-router'
 import { ApiError } from '@/api/client'
-import { session, signIn, useAuth } from '@/auth'
+import { session, signIn, useAuth } from '@/store/auth'
 import BrandMark from '@/components/BrandMark.vue'
 import { destination, router } from '@/router'
 

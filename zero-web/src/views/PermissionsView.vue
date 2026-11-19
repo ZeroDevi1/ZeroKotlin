@@ -3,11 +3,11 @@ import { computed, reactive, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import { request } from '@/api/client'
 import { apiPath, codePattern, type PermissionSummary } from '@/api/system'
-import { useAuth } from '@/auth'
+import { useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
 import ListState from '@/components/ListState.vue'
 import StatusChip from '@/components/StatusChip.vue'
-import { useAction, useResource } from '@/queries'
+import { useAction, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const mayWrite = computed(() => auth.user?.administrator && auth.can('system:permission:write'))

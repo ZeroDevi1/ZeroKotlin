@@ -6,13 +6,13 @@ import {
   adminRoleId, apiPath, fetchRoles, flattenTree, passwordError, usernamePattern,
   type DepartmentNode, type UserDetails, type UserListEntry, type UserSummary,
 } from '@/api/system'
-import { refreshSession, useAuth } from '@/auth'
+import { refreshSession, useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
 import StatusChip from '@/components/StatusChip.vue'
 import UserTable from '@/components/UserTable.vue'
-import { useAction, usePage, useQuery, useResource } from '@/queries'
+import { useAction, usePage, useQuery, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const manage = computed(() => auth.user?.administrator && auth.can('system:user:manage'))

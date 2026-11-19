@@ -3,12 +3,12 @@ import { computed, reactive, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import { request } from '@/api/client'
 import { apiPath, codePattern, flattenTree, type MenuNode, type PermissionSummary } from '@/api/system'
-import { refreshSession, useAuth } from '@/auth'
+import { refreshSession, useAuth } from '@/store/auth'
 import EditDialog from '@/components/EditDialog.vue'
 import ListState from '@/components/ListState.vue'
 import StatusChip from '@/components/StatusChip.vue'
-import { menuPages } from '@/navigation'
-import { useAction, useResource } from '@/queries'
+import { menuPages } from '@/router/navigation'
+import { useAction, useResource } from '@/hooks/useQueries'
 
 const auth = useAuth()
 const mayWrite = computed(() => auth.can('system:menu:write'))

@@ -1,6 +1,6 @@
 # 可选能力与业务模块
 
-`zero-app` 默认装配 `zero-core` 主变体和 `zero-system`。以下 Gradle 属性可以组合使用，接受 `true` 或 `false`。
+`zero-system` 同时承载系统业务与应用入口，默认依赖 `zero-core` 主变体。以下 Gradle 属性可以组合使用，接受 `true` 或 `false`。
 
 | 构建属性 | JVM 应用内容 | 运行开关 |
 | --- | --- | --- |
@@ -8,7 +8,7 @@
 | `-PwithKafka=true` | Kafka 客户端及示例接口 | `zero.kafka.enabled`，默认 `false` |
 
 ```bash
-./gradlew :zero-app:bootJar -PwithSearch=true -PwithKafka=true
+./gradlew :zero-system:bootJar -PwithSearch=true -PwithKafka=true
 ```
 
 Elasticsearch 和 Kafka feature 的运行开关同时控制客户端、接口和健康贡献器。`zero-system` 随对应 feature 启用而注册权限种子迁移。JVM 应用需要在打包时选择 feature，并在启动时打开对应的配置才能启用。以下请求使用通过系统登录获取的 Bearer Token，示例假设 `TOKEN` 已设为当前访问令牌。[系统登录](system.md)
@@ -99,6 +99,6 @@ dependencies {
 }
 ```
 
-装配业务模块时，这些 feature 随依赖进入应用包。注入 `ElasticsearchDocuments` 或 `KafkaMessages` 的组件应使用对应的 `zero.search.enabled` 或 `zero.kafka.enabled` 条件，以便在关闭中间件时启动。Gradle 会同时引入 `zero-core` 主变体。[Gradle feature 变体](https://docs.gradle.org/current/userguide/how_to_create_feature_variants_of_a_library.html)
+装配业务模块时，这些 feature 随依赖进入应用包。注入 `dev.zerokotlin.core.service.ElasticsearchDocuments` 或 `dev.zerokotlin.core.service.KafkaMessages` 的组件应使用对应的 `zero.search.enabled` 或 `zero.kafka.enabled` 条件，以便在关闭中间件时启动。Gradle 会同时引入 `zero-core` 主变体。[Gradle feature 变体](https://docs.gradle.org/current/userguide/how_to_create_feature_variants_of_a_library.html)
 
 卸载业务模块时，从启动工程移除其依赖。该模块的菜单会从用户导航中隐藏，模块数据和独立迁移历史保留。以后重新装配同名模块时，Flyway 会从已记录版本继续迁移。

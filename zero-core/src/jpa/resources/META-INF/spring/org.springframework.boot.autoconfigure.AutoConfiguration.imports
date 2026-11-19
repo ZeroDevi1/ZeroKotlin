@@ -1,1 +1,1 @@
-dev.zerokotlin.data.jpa.JpaAutoConfiguration
+dev.zerokotlin.core.config.JpaAutoConfiguration

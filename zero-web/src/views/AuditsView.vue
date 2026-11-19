@@ -4,7 +4,7 @@ import { apiPath, formatTime, type LoginAuditEntry, type OperationAuditEntry } f
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
 import StatusChip from '@/components/StatusChip.vue'
-import { usePage } from '@/queries'
+import { usePage } from '@/hooks/useQueries'
 
 const tab = ref<'logins' | 'operations'>('logins')
 const successful = ref('')

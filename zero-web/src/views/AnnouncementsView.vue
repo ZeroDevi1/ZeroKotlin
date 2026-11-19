@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, shallowRef } from 'vue'
 import { request } from '@/api/client'
-import { useAuth } from '@/auth'
-import ResourcePager from '@/features/organization/ResourcePager.vue'
-import { errorMessage, formatTime, useResourcePage, type Announcement, type AnnouncementStatus } from '@/features/organization/resources'
+import { useAuth } from '@/store/auth'
+import ResourcePager from '@/components/ResourcePager.vue'
+import { errorMessage, formatTime, useResourcePage, type Announcement, type AnnouncementStatus } from '@/hooks/useResourcePage'
 
 type Transition = 'publish' | 'revoke'
 type AnnouncementPanel =

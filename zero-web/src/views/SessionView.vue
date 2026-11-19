@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { refreshSession, session, signOut } from '@/auth'
+import { refreshSession, session, signOut } from '@/store/auth'
 import BrandMark from '@/components/BrandMark.vue'
 import { destination, router } from '@/router'
 
