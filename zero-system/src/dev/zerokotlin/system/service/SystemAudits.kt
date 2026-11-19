@@ -14,11 +14,24 @@ import dev.zerokotlin.system.support.query
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * 在只读事务中查询登录审计和操作审计，返回页数据及相同条件下的总数。
+ *
+ * @property logins 读取登录尝试及其结果。
+ * @property operations 读取操作审计及涉及的操作者和资源。
+ */
 @Service
 class SystemAudits(
     private val logins: LoginAuditMapper,
     private val operations: OperationAuditMapper,
 ) {
+    /**
+     * 按登录结果筛选审计记录。
+     *
+     * @param window 页码和每页条数。
+     * @param successful 为 true 时查成功尝试，为 false 时查失败尝试，为 null 时查询两者。
+     * @return 按发生时间和 ID 倒序排列的登录审计页。
+     */
     @Transactional(readOnly = true)
     fun loginPage(window: PageWindow, successful: Boolean?): PageResult<LoginAuditEntry> {
         val results = logins.selectPage(
@@ -33,6 +46,14 @@ class SystemAudits(
         return window.result(entries, results.total)
     }
 
+    /**
+     * 按操作者和动作筛选操作记录。
+     *
+     * @param window 页码和每页条数。
+     * @param actorId 要精确匹配的操作者用户 ID，null 表示不按操作者筛选。
+     * @param action 要精确匹配的审计动作标识，null 表示不按动作筛选。
+     * @return 按发生时间和 ID 倒序排列的操作审计页。
+     */
     @Transactional(readOnly = true)
     fun operationPage(window: PageWindow, actorId: String?, action: String?): PageResult<OperationAuditEntry> {
         val results = operations.selectPage(

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.spring)
 }
 
+/** 变体名同时决定 Gradle capability 的后缀和 Spring 检查的装配标记文件名。 */
 val optionalFeatures: List<String> = listOf("jpa", "elasticsearch", "kafka")
 optionalFeatures.forEach { feature ->
     // 变体携带装配标记与可选依赖，Kotlin 源码统一由主源集编译。

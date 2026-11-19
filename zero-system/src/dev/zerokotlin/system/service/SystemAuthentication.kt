@@ -20,6 +20,14 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * 验证登录凭据，在会话事务中记录成功登录，并在登录失败时单独写入审计。
+ *
+ * @property users 按规范化后的用户名查找账号及其密码哈希。
+ * @property passwords 校验提交的密码是否与持久化哈希匹配。
+ * @property transactions 在事务内复核账号并创建会话。
+ * @property loginAudit 保存未能建立会话的登录尝试。
+ */
 @Service
 class SystemAuthentication(
     private val users: UserMapper,
@@ -27,8 +35,16 @@ class SystemAuthentication(
     private val transactions: SystemSessionTransactions,
     private val loginAudit: LoginAuditMapper,
 ) {
+    /** 没有匹配账号时用于密码校验的占位哈希，让符合长度要求的密码仍经过哈希比对。 */
     private val dummyHash = passwords.hashPassword(BearerTokens.issue())
 
+    /**
+     * 校验密码及账号启用状态，再尝试建立会话。未建立会话时写入失败审计。
+     *
+     * @param request 用户提交的用户名和密码。
+     * @param address 写入登录审计的远端地址，HTTP 入口最多传入 128 个字符。
+     * @return 创建会话后返回 Bearer 令牌及过期时刻，认证失败或写入前账号已变化时返回 null。
+     */
     fun login(request: LoginRequest, address: String): LoginResponse? {
         val username = normalizeUsername(request.username)
         val user = username?.let { users.selectOne(query<UserRecord>().eq("username", it)) }
@@ -42,6 +58,15 @@ class SystemAuthentication(
     }
 }
 
+/**
+ * 在事务内创建和注销会话，并同步记录审计。
+ *
+ * @property writes 串行化会话创建和注销，记录注销操作。
+ * @property users 获取写入锁之后重新读取账号，确认启用状态和密码哈希。
+ * @property sessions 按令牌摘要写入和删除会话，清理过期记录。
+ * @property loginAudit 写入成功登录审计。
+ * @property sessionSeconds 会话有效期，单位为秒。允许 1～604800，默认为 28800。
+ */
 @Service
 class SystemSessionTransactions(
     private val writes: SystemWrites,
@@ -54,6 +79,13 @@ class SystemSessionTransactions(
         require(sessionSeconds in 1..604800) { "zero.system.session.seconds 必须介于 1 和 604800 之间" }
     }
 
+    /**
+     * 在写入锁下再次核对账号，清理过期会话，将新会话摘要与成功审计一并提交。
+     *
+     * @param verifiedUser 密码已经验证的账号快照。
+     * @param address 写入成功登录审计的远端地址。
+     * @return Bearer 令牌及 Unix 毫秒级过期时间。账号不存在、已停用或密码哈希发生变化时返回 null。
+     */
     @Transactional
     fun open(verifiedUser: UserRecord, address: String): LoginResponse? {
         writes.lock()
@@ -69,6 +101,7 @@ class SystemSessionTransactions(
         return LoginResponse(token, "Bearer", expiresAt)
     }
 
+    /** 注销当前会话，只有实际删除会话记录时才写入审计。 */
     @Transactional
     fun logout() {
         // 删除单个令牌摘要，保留用户在其他客户端的会话。

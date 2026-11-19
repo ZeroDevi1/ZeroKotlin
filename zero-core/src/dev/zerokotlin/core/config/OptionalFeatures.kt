@@ -4,21 +4,21 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.condition.ConditionalOnResource
 
-/** 打包 JPA 变体且存在 Hibernate 时，启用共享数据源上的 JPA 配置。 */
+/** JPA 变体的类路径标记与 Hibernate 均存在时，启用共享数据源上的 JPA 配置。 */
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @ConditionalOnResource(resources = ["classpath:META-INF/zerokotlin/jpa.properties"])
 @ConditionalOnClass(name = ["org.hibernate.cfg.SchemaToolingSettings"])
 internal annotation class ConditionalOnZeroJpa
 
-/** 打包搜索变体且开启 `zero.search.enabled` 时，注册搜索客户端、接口及权限迁移。 */
+/** 搜索变体的标记存在且 `zero.search.enabled` 为 `true` 时，注册搜索组件及权限迁移。开关默认关闭。 */
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 @ConditionalOnResource(resources = ["classpath:META-INF/zerokotlin/elasticsearch.properties"])
 @ConditionalOnProperty(prefix = "zero.search", name = ["enabled"], havingValue = "true")
 annotation class ConditionalOnZeroSearch
 
-/** 打包 Kafka 变体、客户端可用且开启 `zero.kafka.enabled` 时，注册消息组件及权限迁移。 */
+/** Kafka 变体的标记与客户端类均存在，且 `zero.kafka.enabled` 为 `true` 时，注册消息组件及权限迁移。开关默认关闭。 */
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 @ConditionalOnResource(resources = ["classpath:META-INF/zerokotlin/kafka.properties"])

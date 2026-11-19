@@ -36,12 +36,21 @@ import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import tools.jackson.module.kotlin.KotlinModule
 
+/** 启用 Spring Cache，并在应用未提供缓存管理器时选择 Caffeine 或 Redis。 */
 @AutoConfiguration(before = [CacheAutoConfiguration::class])
 @EnableConfigurationProperties(CacheProperties::class)
 @EnableCaching
 internal class ZeroCacheAutoConfiguration {
+    /** 记录选中的缓存后端及启动时发生的 Redis 降级。 */
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    /**
+     * 在启动时选定缓存后端。自动模式仅在 Redis 主机未配置或探测发生可降级的网络故障时使用 Caffeine。
+     * Redis 的配置、认证或证书等错误会使启动失败。
+     *
+     * @param properties 缓存选择模式、有效期和两个后端的配置。
+     * @return 固定使用选定后端的缓存管理器，由 Spring 在 Bean 销毁时关闭。
+     */
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean(CacheManager::class)
     fun cacheManager(properties: CacheProperties): ManagedCacheManager {
@@ -60,6 +69,12 @@ internal class ZeroCacheAutoConfiguration {
         }
     }
 
+    /**
+     * 创建进程内缓存，按写入时间过期并禁止缓存空值。
+     *
+     * @param properties 提供过期时长和每个 Caffeine 缓存的条目上限。
+     * @return 以 Caffeine 为后端的缓存管理器。
+     */
     private fun caffeineCacheManager(properties: CacheProperties): ManagedCacheManager {
         require(properties.caffeine.maximumSize > 0) { "zero.cache.caffeine.maximum-size must be positive" }
         val manager = CaffeineCacheManager().apply {
@@ -72,6 +87,14 @@ internal class ZeroCacheAutoConfiguration {
         return ManagedCacheManager(manager)
     }
 
+    /**
+     * 校验单机 Redis 配置并以 `PING` 确认连通性，初始化失败时销毁连接工厂。
+     * 禁止缓存空值，使用 JSON 存值，键格式为 `<应用前缀><缓存名>::<键>`。
+     * 清理缓存时使用 `SCAN`，每批大小配置为 1000。
+     *
+     * @param properties 提供连接参数、缓存有效期及键前缀。
+     * @return 持有 Redis 连接工厂清理动作的缓存管理器。
+     */
     private fun redisCacheManager(properties: CacheProperties): ManagedCacheManager {
         val settings = properties.redis
         val host = settings.host
@@ -117,6 +140,12 @@ internal class ZeroCacheAutoConfiguration {
         }
     }
 
+    /**
+     * 使用 Kotlin 模块序列化缓存对象，并在声明类型为 `Any` 的值上写入适用的类型信息。
+     * 反序列化时将多态子类型限制在项目包、数字类型及配置的时间和集合相关包范围内。
+     *
+     * @return 用同一 Jackson 类型配置写入和读取缓存值的 JSON 序列化器。
+     */
     private fun cacheValueSerializer(): JacksonJsonRedisSerializer<Any> {
         val allowedTypes = BasicPolymorphicTypeValidator.builder()
             .allowIfSubType("dev.zerokotlin.")
@@ -135,6 +164,13 @@ internal class ZeroCacheAutoConfiguration {
         }
     }
 
+    /**
+     * 识别允许自动模式降级的 Redis 初始化故障。
+     *
+     * @param failure 配置、连接或启动探测期间捕获的运行时异常。
+     * @return [QueryTimeoutException] 直接返回 `true`。Redis 连接失败异常或命令超时异常须在自身或原因链中
+     *   匹配连接拒绝、路由不可达、套接字或命令超时、地址无法解析等类型才返回 `true`。
+     */
     private fun isNetworkFailure(failure: RuntimeException): Boolean {
         if (failure is QueryTimeoutException) return true
         if (failure !is RedisConnectionFailureException && failure !is RedisCommandTimeoutException) return false
@@ -145,9 +181,16 @@ internal class ZeroCacheAutoConfiguration {
     }
 }
 
+/**
+ * 将缓存操作委托给选定后端，并在关闭时释放该后端的外部资源。
+ *
+ * @param delegate 实际处理 Spring Cache 操作的管理器。
+ * @property onClose 关闭时调用的资源清理动作，默认不执行任何操作。
+ */
 internal class ManagedCacheManager(
     delegate: CacheManager,
     private val onClose: () -> Unit = {},
 ) : CacheManager by delegate, AutoCloseable {
+    /** 调用构造时提供的资源清理动作。 */
     override fun close() = onClose()
 }

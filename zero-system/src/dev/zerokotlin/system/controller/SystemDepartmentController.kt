@@ -22,16 +22,36 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * 提供部门树、部门成员查询及部门维护接口。
+ *
+ * @property departments 维护部门层级和部门资料。
+ * @property users 按调用者的数据范围查询部门成员。
+ */
 @RestController
 @RequestMapping("/api/system/departments")
 class SystemDepartmentController(
     private val departments: SystemDepartments,
     private val users: SystemUsers,
 ) {
+    /**
+     * 读取组织架构。
+     *
+     * @return 从根节点展开的部门树。
+     */
     @GetMapping("/tree")
     @PreAuthorize("hasAuthority('system:department:read')")
     fun tree(): List<DepartmentNode> = departments.tree()
 
+    /**
+     * 分页查询指定部门内当前用户有权查看的成员。
+     *
+     * @param id 成员直属部门的 ID。
+     * @param page 页码，从 1 开始，默认 1。
+     * @param size 每页条数，范围为 1～100，默认 20。
+     * @param roleId 用于筛选成员的角色 ID，省略时也包含未分配角色的成员。
+     * @return 包含成员资料和已分配角色的用户页。
+     */
     @GetMapping("/{id}/members")
     @PreAuthorize("hasAuthority('$USER_READ')")
     fun members(
@@ -41,11 +61,23 @@ class SystemDepartmentController(
         @RequestParam(required = false) roleId: String?,
     ): PageResult<UserListEntry> = users.list(PageWindow(page, size), id, roleId)
 
+    /**
+     * 新增一个部门，仅系统管理员可执行。
+     *
+     * @param request 部门名称、上级部门 ID 和同级排序值。
+     * @return HTTP 201 响应体，包含新资源的 ID。
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('$DEPARTMENT_WRITE')")
     fun create(@RequestBody request: DepartmentRequest): CreatedResource = departments.create(request)
 
+    /**
+     * 修改部门资料或调整上级部门，仅系统管理员可执行，成功时返回 HTTP 204。
+     *
+     * @param id 待修改的部门 ID。
+     * @param request 部门的新名称、上级部门 ID 和同级排序值。
+     */
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('$DEPARTMENT_WRITE')")

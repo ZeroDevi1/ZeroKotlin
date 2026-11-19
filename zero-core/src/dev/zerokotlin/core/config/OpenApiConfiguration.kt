@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.context.annotation.Bean
 
+/** 为 Servlet 应用声明 OpenAPI 的全局 Bearer 认证方案，并标注允许匿名访问的操作。 */
 @AutoConfiguration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @OpenAPIDefinition(
@@ -20,6 +21,12 @@ import org.springframework.context.annotation.Bean
 )
 @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, scheme = "bearer")
 internal class OpenApiConfiguration {
+    /**
+     * 按路径字符串和 HTTP 方法查找公开操作，并将其安全声明设为空列表以覆盖全局认证要求。
+     *
+     * @param operations 安全过滤链和 API 文档共用的公开操作声明。
+     * @return 定制已存在的 OpenAPI 操作的组件。
+     */
     @Bean
     fun publicApiOperations(operations: ObjectProvider<PublicApiOperation>): OpenApiCustomizer = OpenApiCustomizer { api ->
         operations.stream().forEach { endpoint ->

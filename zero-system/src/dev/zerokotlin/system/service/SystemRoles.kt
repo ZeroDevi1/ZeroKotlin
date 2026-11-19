@@ -33,12 +33,33 @@ import dev.zerokotlin.system.support.requiredFlag
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/** 只授予内置管理员、禁止分配给业务角色的权限编码集合。 */
 private val administratorPermissions = setOf(USER_MANAGE, ROLE_WRITE, PERMISSION_WRITE, DEPARTMENT_WRITE, POSITION_WRITE)
 
+/**
+ * 将持久化角色记录转换为业务摘要。
+ *
+ * @receiver 待转换的角色记录。
+ * @return 角色资料、数据范围编码及布尔启用状态。
+ */
 private fun RoleRecord.summary() = RoleSummary(id, code, name, dataScope, enabled == 1)
 
+/**
+ * 将权限点记录转换为业务摘要。
+ *
+ * @receiver 待转换的权限点记录。
+ * @return 权限点编码、名称及布尔启用状态。
+ */
 private fun PermissionRecord.summary() = PermissionSummary(code, name, enabled == 1)
 
+/**
+ * 查询角色并维护业务角色与权限的关联。业务角色写入要求系统管理员身份和角色写入权限。
+ *
+ * @property roles 读写角色资料及数据范围。
+ * @property permissions 查询权限目录并检查分配的权限点是否存在。
+ * @property relations 查询和替换角色的权限关联。
+ * @property writes 串行化写入，在同一事务中校验写入者并记录审计。
+ */
 @Service
 class SystemRoles(
     private val roles: RoleMapper,
@@ -46,12 +67,25 @@ class SystemRoles(
     private val relations: SystemRelationMapper,
     private val writes: SystemWrites,
 ) {
+    /**
+     * 在只读事务中按启用状态筛选角色。
+     *
+     * @param window 页码和每页条数。
+     * @param enabled 目标启用状态，为 null 时查询所有状态。
+     * @return 按编码和 ID 升序排列的角色摘要页。
+     */
     @Transactional(readOnly = true)
     fun list(window: PageWindow, enabled: Boolean?): PageResult<RoleSummary> {
         val flag = enabled?.flag()
         return window.result(roles.findRoles(flag, window).map(RoleRecord::summary), roles.countRoles(flag))
     }
 
+    /**
+     * 在只读事务中查询角色的资料与权限。
+     *
+     * @param id 角色 ID，不存在时返回 404。
+     * @return 角色摘要和按编码升序排列的权限列表。内置管理员角色的列表来自所有已启用权限点。
+     */
     @Transactional(readOnly = true)
     fun detail(id: String): RoleDetails {
         val role = roles.selectById(id) ?: missing("角色")
@@ -63,6 +97,12 @@ class SystemRoles(
         return RoleDetails(role.summary(), codes)
     }
 
+    /**
+     * 新建业务角色并保存初始权限关联。角色编码重复时返回 409。
+     *
+     * @param request 唯一编码、名称、数据范围及初始权限编码集合。
+     * @return 新角色 ID。
+     */
     @Transactional
     fun create(request: CreateRoleRequest): CreatedResource {
         val actor = writes.authorize(ROLE_WRITE, administratorOnly = true)
@@ -78,6 +118,12 @@ class SystemRoles(
         return CreatedResource(id)
     }
 
+    /**
+     * 更新业务角色资料，并在同一事务内替换权限关联。
+     *
+     * @param id 待修改的业务角色 ID。不存在时返回 404，指定内置管理员角色时返回 400。
+     * @param request 新名称、数据范围、必填的启用状态和完整权限编码集合。
+     */
     @Transactional
     fun update(id: String, request: UpdateRoleRequest) {
         val actor = writes.authorize(ROLE_WRITE, administratorOnly = true)
@@ -93,6 +139,11 @@ class SystemRoles(
         writes.record(actor, "role.update", role.id)
     }
 
+    /**
+     * 校验待分配的权限格式、存在性及分配限制，失败时抛出 HTTP 400 异常。
+     *
+     * @param codes 权限编码集合，最多 256 个，禁止包含内置管理员专用权限。
+     */
     private fun validatePermissions(codes: Set<String>) {
         if (codes.size > 256) invalid("单个角色最多关联 256 个权限点")
         if (codes.any { it in administratorPermissions }) invalid("所选权限由内置管理员专用")
@@ -102,20 +153,43 @@ class SystemRoles(
         }
     }
 
+    /**
+     * 在调用方事务中清空原有关联，再写入完整的权限集合。
+     *
+     * @param roleId 待替换权限的角色 ID。
+     * @param codes 已校验的权限编码集合，为空时清空关联。
+     */
     private fun replacePermissions(roleId: String, codes: Set<String>) {
         relations.deleteRolePermissions(roleId)
         codes.forEach { relations.insertRolePermission(roleId, it) }
     }
 }
 
+/**
+ * 查询权限目录并维护自定义权限点。权限点写入要求系统管理员身份和权限点写入权限。
+ *
+ * @property permissions 按编码读写权限点及启用状态。
+ * @property writes 串行化权限点写入，重新授权并记录操作审计。
+ */
 @Service
 class SystemPermissions(
     private val permissions: PermissionMapper,
     private val writes: SystemWrites,
 ) {
+    /**
+     * 查询权限点目录。
+     *
+     * @return 按编码升序排列的全部权限点摘要。
+     */
     fun list(): List<PermissionSummary> =
         permissions.selectList(query<PermissionRecord>().orderByAsc("code")).map(PermissionRecord::summary)
 
+    /**
+     * 校验自定义编码后登记权限点，并在同一事务写入审计。编码重复时返回 409。
+     *
+     * @param request 自定义权限编码和显示名称。
+     * @return 新权限点摘要。
+     */
     @Transactional
     fun create(request: CreatePermissionRequest): PermissionSummary {
         val actor = writes.authorize(PERMISSION_WRITE, administratorOnly = true)
@@ -128,6 +202,13 @@ class SystemPermissions(
         return permission.summary()
     }
 
+    /**
+     * 更新自定义权限点的名称和启用状态，并在同一事务写入审计。
+     *
+     * @param code 待修改的自定义权限编码，不存在时返回 404。
+     * @param request 新名称和必填的启用状态。
+     * @return 更新后的权限点摘要。
+     */
     @Transactional
     fun update(code: String, request: UpdatePermissionRequest): PermissionSummary {
         val actor = writes.authorize(PERMISSION_WRITE, administratorOnly = true)
@@ -140,6 +221,12 @@ class SystemPermissions(
         return permission.summary()
     }
 
+    /**
+     * 校验编码格式及保留前缀。使用 system: 前缀或格式无效时抛出 HTTP 400 异常。
+     *
+     * @param value 请求提交的权限编码。
+     * @return 通过校验的自定义权限编码。
+     */
     private fun editableCode(value: String): String =
         checkedCode(value).also { if (it.startsWith("system:")) invalid("system: 权限由系统维护") }
 }

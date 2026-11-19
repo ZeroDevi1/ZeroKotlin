@@ -40,8 +40,25 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
+/**
+ * 将查询到的用户行转换为对外摘要。
+ *
+ * @receiver 从用户查询中读取的一行资料。
+ * @return 含身份资料、直属部门及布尔启用状态的用户摘要。
+ */
 private fun UserRow.summary() = UserSummary(id, username, displayName, departmentId, enabled == 1)
 
+/**
+ * 按权限对应的数据范围读取用户、更新资料，并维护账号及角色分配。
+ *
+ * @property users 读写用户记录，按数据范围查找目标账号。
+ * @property departments 核验账号所属部门是否存在。
+ * @property roles 核验待分配的业务角色是否存在。
+ * @property relations 查询和整体替换用户的角色关联。
+ * @property sessions 在账号停用或设置新密码后删除会话。
+ * @property passwords 为新账号或新密码生成密码哈希。
+ * @property writes 串行化写入，重新授权并在写事务中记录操作审计。
+ */
 @Service
 class SystemUsers(
     private val users: UserMapper,
@@ -52,6 +69,14 @@ class SystemUsers(
     private val passwords: PasswordEncoder,
     private val writes: SystemWrites,
 ) {
+    /**
+     * 在只读事务中按用户读取权限的数据范围查询账号，并批量补齐已分配的角色。
+     *
+     * @param window 页码和每页条数。
+     * @param departmentId 直属部门 ID，null 表示不限部门。
+     * @param roleId 已分配的角色 ID，null 表示不限角色。
+     * @return 按用户名和 ID 升序排列的用户页，每项包含用户摘要和已分配的角色。
+     */
     @Transactional(readOnly = true)
     fun list(window: PageWindow, departmentId: String?, roleId: String?): PageResult<UserListEntry> {
         val filter = UserQuery(currentSystemActor(), USER_READ, departmentId, roleId)
@@ -66,12 +91,24 @@ class SystemUsers(
         return window.result(entries, users.countUsers(filter))
     }
 
+    /**
+     * 在只读事务中读取用户摘要及角色分配，受用户读取权限的数据范围约束。
+     *
+     * @param id 要查询的用户 ID，目标不存在或超出可见范围时返回 404。
+     * @return 用户摘要和按 ID 升序排列的角色 ID 列表。
+     */
     @Transactional(readOnly = true)
     fun detail(id: String): UserDetails {
         val user = visibleUser(id, currentSystemActor(), USER_READ)
         return UserDetails(user.summary(), relations.findUserRoleIds(user.id))
     }
 
+    /**
+     * 校验账号管理权限和系统管理员身份后创建账号，分配业务角色并写入审计。用户名重复时返回 409。
+     *
+     * @param request 用户名、显示名称、初始密码、可选部门和待分配的业务角色。
+     * @return 新用户 ID。
+     */
     @Transactional
     fun create(request: CreateUserRequest): CreatedResource {
         val username = normalizeUsername(request.username) ?: invalid("用户名格式无效")
@@ -89,6 +126,13 @@ class SystemUsers(
         return CreatedResource(id)
     }
 
+    /**
+     * 按资料修改权限的数据范围查找目标，更新其显示名称并写入审计。
+     *
+     * @param id 待修改的用户 ID，目标不存在或不可见时返回 404。
+     * @param request 新的显示名称。
+     * @return 更新后的用户摘要。
+     */
     @Transactional
     fun updateProfile(id: String, request: UserProfileRequest): UserSummary {
         val displayName = checkedText(request.displayName, "displayName")
@@ -100,6 +144,14 @@ class SystemUsers(
         return user.summary()
     }
 
+    /**
+     * 校验账号管理权限和系统管理员身份后更新账号并替换角色。停用账号或提交新密码时，在同一事务撤销该账号的全部会话。
+     * 内置管理员必须保持启用并保有内置角色。内置角色只在首次初始化时授予。
+     *
+     * @param id 待修改的用户 ID，不存在或不可见时返回 404。
+     * @param request 新部门、必填的启用状态、完整角色集合及可选的新密码。部门为 null 表示无所属部门，
+     * 密码为 null 表示沿用当前密码。
+     */
     @Transactional
     fun updateAccount(id: String, request: UserAccountRequest) {
         val enabled = request.enabled.requiredFlag()
@@ -126,19 +178,43 @@ class SystemUsers(
         writes.record(actor, "user.account.update", user.id)
     }
 
+    /**
+     * 按操作对应的数据范围查找用户，目标不存在或不在范围内时抛出 HTTP 404 异常。
+     *
+     * @param id 目标用户 ID。
+     * @param actor 已认证的操作主体。
+     * @param authority 用于确定数据范围的权限编码。
+     * @return 数据范围内匹配的用户行。
+     */
     private fun visibleUser(id: String, actor: SystemActor, authority: String): UserRow =
         users.findVisible(UserQuery(actor, authority), id) ?: missing("用户")
 
+    /**
+     * 校验非空的部门 ID。部门不存在时抛出 HTTP 400 异常。
+     *
+     * @param id 用户的直属部门 ID，null 表示未分配部门。
+     */
     private fun validateDepartment(id: String?) {
         if (id != null && departments.selectById(id)?.id != id) invalid("部门不存在")
     }
 
+    /**
+     * 校验业务角色数量、存在性及分配限制，失败时抛出 HTTP 400 异常。
+     *
+     * @param ids 待分配的业务角色 ID 集合，最多 256 个。
+     */
     private fun validateRoles(ids: Set<String>) {
         if (ADMIN_ROLE_ID in ids) invalid("内置管理员角色只能在首次初始化时授予")
         if (ids.size > 256) invalid("单个账号最多关联 256 个业务角色")
         if (ids.isNotEmpty() && roles.selectByIds(ids).map { it.id }.toSet() != ids) invalid("角色不存在")
     }
 
+    /**
+     * 在调用方事务中删除旧关联并写入完整的角色集合。
+     *
+     * @param userId 待替换角色的用户 ID。
+     * @param ids 经调用方校验的角色 ID 集合，为空时清空关联。
+     */
     private fun setRoles(userId: String, ids: Set<String>) {
         relations.deleteUserRoles(userId)
         ids.forEach { relations.insertUserRole(userId, it) }

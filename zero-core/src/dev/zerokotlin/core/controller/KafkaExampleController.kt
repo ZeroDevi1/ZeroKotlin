@@ -18,12 +18,24 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 
+/**
+ * Kafka 示例接口，仅在 Kafka 功能启用时注册。
+ *
+ * @property messages 使用配置的主题和消费组发布、读取消息的服务。
+ */
 @RestController
 @RequestMapping("/api/extensions/kafka")
 @ConditionalOnZeroKafka
 class KafkaExampleController(private val messages: KafkaMessages) {
+    /** 记录 Kafka 请求失败时提取的异常类型。 */
     private val logger = LogFactory.getLog(javaClass)
 
+    /**
+     * 向示例主题发布一条消息，需要 `extensions:kafka:publish` 权限。输入校验失败时返回 HTTP 400。
+     *
+     * @param request 可选键最多 200 个 UTF-16 码元，值须非空白且最多 10 000 个 UTF-16 码元。
+     * @return 代理确认写入后返回的分区编号和分区内偏移量。
+     */
     @PostMapping("/messages")
     @PreAuthorize("hasAuthority('extensions:kafka:publish')")
     fun publish(@RequestBody request: PublishKafkaMessage): KafkaPosition {
@@ -33,10 +45,21 @@ class KafkaExampleController(private val messages: KafkaMessages) {
         return messages.publish(request.key, request.value)
     }
 
+    /**
+     * 轮询一次并在返回非空批次前同步提交消费组偏移量，需要 `extensions:kafka:consume` 权限。
+     *
+     * @return 最多 20 条消息。已获分区但本次轮询没有记录时返回空列表。
+     */
     @PostMapping("/consume")
     @PreAuthorize("hasAuthority('extensions:kafka:consume')")
     fun consume(): List<KafkaMessage> = messages.consume()
 
+    /**
+     * 将 Kafka 发布、分区分配或消费等失败转换为接口错误。
+     *
+     * @param failure Kafka 客户端或消息服务抛出的异常。
+     * @return HTTP 502，包含错误代码和异常类型。
+     */
     @ExceptionHandler(KafkaException::class)
     fun upstreamError(failure: KafkaException): ResponseEntity<Map<String, String>> {
         val reason = kafkaFailureDetail(failure)
