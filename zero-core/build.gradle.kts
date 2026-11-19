@@ -44,6 +44,7 @@ dependencies {
 
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation(libs.jsoup)
+    implementation(libs.ip2region)
     implementation("org.springframework.data:spring-data-redis")
     implementation("io.lettuce:lettuce-core")
     implementation("org.springframework.boot:spring-boot-starter-actuator")

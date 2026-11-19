@@ -1,6 +1,9 @@
 package dev.zerokotlin.core.config
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import dev.zerokotlin.core.RedisMonitor
+import dev.zerokotlin.core.RedisMonitorStatus
+import dev.zerokotlin.core.RedisSnapshot
 import io.lettuce.core.ClientOptions
 import io.lettuce.core.RedisCommandTimeoutException
 import io.lettuce.core.SocketOptions
@@ -10,6 +13,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.nio.channels.UnresolvedAddressException
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.cache.autoconfigure.CacheAutoConfiguration
@@ -44,6 +48,14 @@ import tools.jackson.module.kotlin.KotlinModule
 internal class ZeroCacheAutoConfiguration {
     /** 记录选中的缓存后端及启动时发生的 Redis 降级。 */
     private val logger = LoggerFactory.getLogger(javaClass)
+
+    /** 仅采集实际启用的 Redis 缓存，复用其连接工厂及超时配置。 */
+    @Bean
+    @ConditionalOnMissingBean(RedisMonitor::class)
+    fun redisMonitor(cacheManagers: ObjectProvider<CacheManager>): RedisMonitor = RedisMonitor {
+        val manager = cacheManagers.ifUnique as? ManagedCacheManager
+        manager?.readRedis?.invoke() ?: RedisSnapshot(RedisMonitorStatus.DISABLED)
+    }
 
     /**
      * 在启动时选定缓存后端。自动模式仅在 Redis 主机未配置或探测发生可降级的网络故障时使用 Caffeine。
@@ -134,11 +146,28 @@ internal class ZeroCacheAutoConfiguration {
             val writer = RedisCacheWriter.nonLockingRedisCacheWriter(factory, BatchStrategies.scan(1000))
             val manager = RedisCacheManager.builder(writer).cacheDefaults(config).build().apply { afterPropertiesSet() }
             logger.info("Selected cache: redis")
-            return ManagedCacheManager(manager, StringRedisTemplate(factory), factory::destroy)
+            return ManagedCacheManager(manager, StringRedisTemplate(factory), factory::destroy) { redisSnapshot(factory) }
         } catch (failure: RuntimeException) {
             runCatching(factory::destroy).exceptionOrNull()?.let(failure::addSuppressed)
             throw failure
         }
+    }
+
+    /** 将 INFO 响应映射到固定字段，连接或 ACL 异常视为暂不可读取。 */
+    private fun redisSnapshot(factory: LettuceConnectionFactory): RedisSnapshot {
+        val info = try {
+            factory.connection.use { it.serverCommands().info() }
+        } catch (_: RuntimeException) {
+            null
+        }
+        if (info.isNullOrEmpty()) return RedisSnapshot(RedisMonitorStatus.UNAVAILABLE)
+        return RedisSnapshot(
+            status = RedisMonitorStatus.AVAILABLE,
+            version = info.getProperty("redis_version")?.takeIf { it.matches(Regex("[0-9]{1,5}(\\.[0-9]{1,5}){2}")) },
+            connectedClients = info.getProperty("connected_clients")?.toLongOrNull()?.takeIf { it >= 0 },
+            usedMemoryBytes = info.getProperty("used_memory")?.toLongOrNull()?.takeIf { it >= 0 },
+            uptimeSeconds = info.getProperty("uptime_in_seconds")?.toLongOrNull()?.takeIf { it >= 0 },
+        )
     }
 
     /**
@@ -188,11 +217,13 @@ internal class ZeroCacheAutoConfiguration {
  * @param delegate 实际处理 Spring Cache 操作的管理器。
  * @property redis Redis 模式下供原子安全操作复用的字符串模板，与缓存共用连接工厂。
  * @property onClose 关闭时调用的资源清理动作，默认不执行任何操作。
+ * @property readRedis 实际选用 Redis 时的指标读取函数。
  */
 internal class ManagedCacheManager(
     delegate: CacheManager,
     val redis: StringRedisTemplate? = null,
     private val onClose: () -> Unit = {},
+    val readRedis: (() -> RedisSnapshot)? = null,
 ) : CacheManager by delegate, AutoCloseable {
     /** 调用构造时提供的资源清理动作。 */
     override fun close() = onClose()

@@ -1,4 +1,5 @@
 import {
+  Activity,
   UserRound,
   CalendarClock,
   MessageCircle,
@@ -41,6 +42,7 @@ const systemPages: Page[] = [
   { path: '/files', label: '文件管理', icon: FolderOpen, authority: 'system:file:read', view: () => import('@/views/FilesView.vue') },
   { path: '/realtime', label: '实时消息', icon: MessageCircle, authority: 'system:message:read', view: () => import('@/views/RealtimeView.vue') },
   { path: '/jobs', label: '定时任务', icon: CalendarClock, authority: 'system:job:read', view: () => import('@/views/JobsView.vue') },
+  { path: '/operations', label: '运行监控', icon: Activity, authority: 'system:monitor:read', view: () => import('@/views/OpsView.vue') },
 ]
 
 // 扩展页面须先注册固定路由，再通过服务端菜单发布。

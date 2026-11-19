@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.annotation.TableName
  * @property successful 登录结果，`1` 表示成功建立会话，`0` 表示失败。
  * @property remoteAddress 服务端记录的请求对端地址。
  * @property occurredAt 登录尝试时间，单位为 Unix 毫秒。
+ * @property ipRegion 可选的离线 IP 归属地。
  */
 @TableName("sys_login_audit")
 class LoginAuditRecord(
@@ -23,4 +24,5 @@ class LoginAuditRecord(
     var successful: Int = 0,
     var remoteAddress: String = "",
     var occurredAt: Long = 0,
+    var ipRegion: String? = null,
 )

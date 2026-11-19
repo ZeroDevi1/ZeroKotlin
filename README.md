@@ -70,6 +70,7 @@ pnpm dev
 | 配置验证码、按 IP 或用户限流、输入清理与字段脱敏 | [安全控制](docs/security-controls.md) |
 | 配置任务计划、立即执行和查看运行日志 | [Quartz 任务调度](docs/jobs.md) |
 | 维护本人资料、改密、直接勾选角色菜单和批量管理资源 | [账号与菜单管理](docs/accounts.md) |
+| 查看服务与 Redis 指标、配置离线 IP 归属地与请求审计 | [运行监控](docs/operations.md) |
 | 调用登录、角色、部门、行级权限和审计接口 | [系统 API 和权限表](docs/system.md) |
 | 管理岗位和成员、发布或撤回公告、读取个人收件箱 | [岗位、公告和收件箱 API](docs/organization-notices.md) |
 | 添加可卸载模块、启用搜索或收发 Kafka 消息 | [扩展指南与请求示例](docs/extensions.md) |

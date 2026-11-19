@@ -10,6 +10,7 @@ minio = "9.0.3"
 aliyun-oss = "3.18.5"
 apache-poi = "6.0.0"
 jsoup = "1.24.1"
+ip2region = "3.3.7"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -21,6 +22,7 @@ minio = { module = "io.minio:minio", version.ref = "minio" }
 aliyun-oss = { module = "com.aliyun.oss:aliyun-sdk-oss", version.ref = "aliyun-oss" }
 apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+ip2region = { module = "org.lionsoul:ip2region", version.ref = "ip2region" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

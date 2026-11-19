@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
-import { apiPath, formatTime, type LoginAuditEntry, type OperationAuditEntry } from '@/api/system'
+import { apiPath, formatTime, type LoginAuditEntry, type OperationAuditEntry, type RequestAuditEntry } from '@/api/system'
 import ListState from '@/components/ListState.vue'
 import Pager from '@/components/Pager.vue'
 import StatusChip from '@/components/StatusChip.vue'
 import { usePage } from '@/hooks/useQueries'
 
-const tab = ref<'logins' | 'operations'>('logins')
+const tab = ref<'logins' | 'operations' | 'requests'>('logins')
 const successful = ref('')
+const requestSuccessful = ref('')
 const operationFilters = reactive({ actorId: '', action: '' })
 const applied = ref({ ...operationFilters })
 
@@ -23,7 +24,14 @@ const {
 } = usePage<OperationAuditEntry>((page, size) => tab.value === 'operations'
   ? apiPath('/audits/operations', { page, size, ...applied.value })
   : null)
+const {
+  data: requestData, loading: requestLoading, error: requestError, reload: reloadRequests,
+  page: requestPage, size: requestSize, total: requestTotal, setSize: setRequestSize,
+} = usePage<RequestAuditEntry>((page, size) => tab.value === 'requests'
+  ? apiPath('/audits/requests', { page, size, successful: requestSuccessful.value })
+  : null)
 watch(successful, () => { loginPage.value = 1 }, { flush: 'sync' })
+watch(requestSuccessful, () => { requestPage.value = 1 }, { flush: 'sync' })
 
 function filterOperations() {
   opPage.value = 1
@@ -41,13 +49,14 @@ function resetOperations() {
 
 <template>
   <header class="page-header">
-    <div><h1>审计</h1><p>查询登录结果和已记录的系统操作。</p></div>
+    <div><h1>审计</h1><p>查询登录、系统操作和请求记录。</p></div>
   </header>
   <section class="panel" aria-label="审计记录">
     <div class="panel-title">
       <div class="toolbar" role="group" aria-label="审计类型">
         <button type="button" class="btn btn-quiet" :aria-pressed="tab === 'logins'" @click="tab = 'logins'">登录审计</button>
         <button type="button" class="btn btn-quiet" :aria-pressed="tab === 'operations'" @click="tab = 'operations'">操作审计</button>
+        <button type="button" class="btn btn-quiet" :aria-pressed="tab === 'requests'" @click="tab = 'requests'">请求审计</button>
       </div>
     </div>
     <template v-if="tab === 'logins'">
@@ -72,7 +81,10 @@ function resetOperations() {
                   <code v-if="entry.userId" class="cell-meta">{{ entry.userId }}</code>
                 </td>
                 <td><StatusChip :enabled="entry.successful" active-label="成功" inactive-label="失败" /></td>
-                <td><code>{{ entry.remoteAddress }}</code></td>
+                <td>
+                  <code>{{ entry.remoteAddress }}</code>
+                  <span v-if="entry.ipRegion" class="cell-meta">{{ entry.ipRegion }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -80,7 +92,7 @@ function resetOperations() {
       </ListState>
       <Pager v-if="loginData" v-model:page="loginPage" :size="loginSize" :total="loginTotal" @update:size="setLoginSize" />
     </template>
-    <template v-else>
+    <template v-else-if="tab === 'operations'">
       <form class="toolbar" @submit.prevent="filterOperations">
         <label class="field"><span>操作者 ID</span><input v-model="operationFilters.actorId" maxlength="36"></label>
         <label class="field"><span>操作类型</span><input v-model="operationFilters.action" maxlength="120"></label>
@@ -104,6 +116,51 @@ function resetOperations() {
         </div>
       </ListState>
       <Pager v-if="opData" v-model:page="opPage" :size="opSize" :total="opTotal" @update:size="setOpSize" />
+    </template>
+    <template v-else>
+      <div class="toolbar">
+        <label class="field">
+          <span>请求结果</span>
+          <select v-model="requestSuccessful">
+            <option value="">全部结果</option><option value="true">低于 HTTP 400</option><option value="false">HTTP 400 及以上</option>
+          </select>
+        </label>
+      </div>
+      <ListState :loading="requestLoading" :error="requestError" :empty="!requestData?.items.length"
+        empty-text="暂无符合条件的请求记录。" @retry="reloadRequests">
+        <div class="table-wrap">
+          <table class="data-table" aria-label="请求审计记录">
+            <thead>
+              <tr>
+                <th scope="col">时间</th><th scope="col">请求</th><th scope="col">操作者 ID</th>
+                <th scope="col">结果</th><th scope="col">耗时</th><th scope="col">客户端</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in requestData?.items" :key="entry.id">
+                <td><time :datetime="new Date(entry.occurredAt).toISOString()">{{ formatTime(entry.occurredAt) }}</time></td>
+                <td>
+                  <code>{{ entry.httpMethod }} {{ entry.routePattern }}</code>
+                  <code class="cell-meta">{{ entry.action }}</code>
+                </td>
+                <td><code>{{ entry.actorId ?? '—' }}</code></td>
+                <td>
+                  <StatusChip :enabled="entry.httpStatus < 400" :active-label="`HTTP ${entry.httpStatus}`"
+                    :inactive-label="`HTTP ${entry.httpStatus}`" />
+                  <code v-if="entry.exceptionType" class="cell-meta">{{ entry.exceptionType }}</code>
+                </td>
+                <td>{{ entry.durationMs }} ms</td>
+                <td>
+                  <code>{{ entry.remoteAddress }}</code>
+                  <span v-if="entry.ipRegion" class="cell-meta">{{ entry.ipRegion }}</span>
+                  <span v-if="entry.userAgent" class="cell-meta">{{ entry.userAgent }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ListState>
+      <Pager v-if="requestData" v-model:page="requestPage" :size="requestSize" :total="requestTotal" @update:size="setRequestSize" />
     </template>
   </section>
 </template>

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema
  * @property successful 本次登录是否成功建立会话。
  * @property remoteAddress 请求对端地址，启用审计脱敏时最多保留前 3 个字符。
  * @property occurredAt 登录尝试时间，单位为 Unix 毫秒。
+ * @property ipRegion 可选的离线 IP 归属地。
  */
 @Schema(description = "单次登录尝试的审计查询结果。")
 data class LoginAuditEntry(
@@ -31,6 +32,8 @@ data class LoginAuditEntry(
         example = "1767225600000",
     )
     val occurredAt: Long,
+    @field:Schema(description = "离线 IP 归属地，旧记录或无法定位的地址返回 null。")
+    val ipRegion: String?,
 )
 
 /**
@@ -58,5 +61,34 @@ data class OperationAuditEntry(
         format = "int64",
         example = "1767225600000",
     )
+    val occurredAt: Long,
+)
+
+/** 单次标注端点的请求审计，状态码与异常类型可同时存在。 */
+@Schema(description = "标注端点的请求审计结果。")
+data class RequestAuditEntry(
+    @field:Schema(description = "审计记录 ID。")
+    val id: String,
+    @field:Schema(description = "已认证操作者的用户 ID。")
+    val actorId: String?,
+    @field:Schema(description = "审计注解声明的动作标识。", example = "monitor.read")
+    val action: String,
+    @field:Schema(description = "HTTP 请求方法。", example = "GET")
+    val httpMethod: String,
+    @field:Schema(description = "匹配的 MVC 路由模板。", example = "/api/system/monitor")
+    val routePattern: String,
+    @field:Schema(description = "HTTP 结果状态码。", example = "200")
+    val httpStatus: Int,
+    @field:Schema(description = "MVC 请求处理耗时，单位为毫秒。")
+    val durationMs: Long,
+    @field:Schema(description = "发生异常时的异常类型简单类名。")
+    val exceptionType: String?,
+    @field:Schema(description = "服务端记录的请求对端地址。")
+    val remoteAddress: String,
+    @field:Schema(description = "可选的离线 IP 归属地。")
+    val ipRegion: String?,
+    @field:Schema(description = "显式开启采集时记录的 User-Agent。")
+    val userAgent: String?,
+    @field:Schema(description = "请求开始处理的 Unix 毫秒时间。")
     val occurredAt: Long,
 )

@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `zero.security.xss.enabled` | `false` | 为已接入的普通文本字段清理 HTML 标记和脚本内容。 |
 | `zero.security.rate-limit.enabled` | `true` | 启用标注了 `@ApiRateLimit` 的接口配额。 |
-| `zero.system.audit.mask-remote-address` | `false` | 对登录审计响应中的对端地址脱敏。 |
+| `zero.system.audit.mask-remote-address` | `false` | 对登录和请求审计响应中的对端地址脱敏。 |
 | `zero.system.captcha.enabled` | `false` | 登录时要求图形验证码。 |
 | `zero.system.captcha.ttl-seconds` | `120` | 挑战有效期，单位为秒，允许 15～600。 |
 
@@ -45,4 +45,4 @@
 
 浏览器登录页会查询验证码状态，并在需要时显示输入框。点击图片可获取新挑战。使用本地后端时，签发和登录须命中同一进程，进程重启会使旧挑战失效。使用 Redis 时，可以从一个实例签发并在另一个实例提交，同一 ID 的并发登录请求最多有一次通过验证码校验。
 
-验证码校验失败会写入登录失败审计，包含格式有效的规范化登录名和对端地址。签发验证码和限流提前拒绝的请求未进入登录认证流程。登录审计仅包含原有审计字段。
+验证码校验失败会写入登录失败审计，包含格式有效的规范化登录名和对端地址。签发验证码和限流提前拒绝的请求未进入登录认证流程。配置离线 IP 库后，登录审计也会保存可查到的归属地。

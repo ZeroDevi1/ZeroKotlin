@@ -4,6 +4,7 @@ import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.LoginAuditEntry
 import dev.zerokotlin.system.dto.OperationAuditEntry
+import dev.zerokotlin.system.dto.RequestAuditEntry
 import dev.zerokotlin.system.service.SystemAudits
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /**
- * 提供登录和操作审计查询接口，所有端点均要求审计读取权限。
+ * 提供登录、操作和请求审计查询接口，所有端点均要求审计读取权限。
  *
  * @property audits 按审计类别和筛选条件读取记录。
  */
@@ -73,4 +74,27 @@ class SystemAuditController(private val audits: SystemAudits) {
         @Parameter(description = "精确匹配操作类型，例如 user.create")
         @RequestParam(required = false) action: String?,
     ): PageResult<OperationAuditEntry> = audits.operationPage(PageWindow(page, size), actorId, action)
+
+    /**
+     * 按 HTTP 结果筛选请求审计记录。
+     *
+     * @param page 页码，从 1 开始，默认 1。
+     * @param size 每页条数，范围为 1～100，默认 20。
+     * @param successful 按 HTTP 状态码是否低于 400 筛选，省略时返回全部。
+     * @return 按发生时间倒序排列的请求审计页。
+     */
+    @GetMapping("/requests")
+    @Operation(
+        summary = "分页查询请求审计",
+        description = "需要 `system:audit:read` 权限。时间字段使用 Unix 毫秒。",
+        responses = [ApiResponse(responseCode = "200", description = "请求审计分页", useReturnTypeSchema = true)],
+    )
+    fun requests(
+        @Parameter(description = "页码，从 1 开始")
+        @RequestParam(defaultValue = "1") page: Int,
+        @Parameter(description = "每页条数，范围为 1–100")
+        @RequestParam(defaultValue = "20") size: Int,
+        @Parameter(description = "true 匹配低于 400 的 HTTP 状态，false 匹配 400 及以上。")
+        @RequestParam(required = false) successful: Boolean?,
+    ): PageResult<RequestAuditEntry> = audits.requestPage(PageWindow(page, size), successful)
 }

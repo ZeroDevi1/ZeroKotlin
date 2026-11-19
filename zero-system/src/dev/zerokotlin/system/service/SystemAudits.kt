@@ -5,25 +5,30 @@ import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.LoginAuditEntry
 import dev.zerokotlin.system.dto.OperationAuditEntry
+import dev.zerokotlin.system.dto.RequestAuditEntry
 import dev.zerokotlin.system.entity.LoginAuditRecord
 import dev.zerokotlin.system.entity.OperationAuditRecord
+import dev.zerokotlin.system.entity.RequestAuditRecord
 import dev.zerokotlin.system.mapper.LoginAuditMapper
 import dev.zerokotlin.system.mapper.OperationAuditMapper
+import dev.zerokotlin.system.mapper.RequestAuditMapper
 import dev.zerokotlin.system.support.flag
 import dev.zerokotlin.system.support.query
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * 在只读事务中查询登录审计和操作审计，返回页数据及相同条件下的总数。
+ * 在只读事务中查询登录、操作和请求审计，返回页数据及相同条件下的总数。
  *
  * @property logins 读取登录尝试及其结果。
  * @property operations 读取操作审计及涉及的操作者和资源。
+ * @property requests 读取端点的请求审计。
  */
 @Service
 class SystemAudits(
     private val logins: LoginAuditMapper,
     private val operations: OperationAuditMapper,
+    private val requests: RequestAuditMapper,
 ) {
     /**
      * 按登录结果筛选审计记录。
@@ -41,7 +46,7 @@ class SystemAudits(
         )
 
         val entries = results.records.map {
-            LoginAuditEntry(it.id, it.userId, it.username, it.successful == 1, it.remoteAddress, it.occurredAt)
+            LoginAuditEntry(it.id, it.userId, it.username, it.successful == 1, it.remoteAddress, it.occurredAt, it.ipRegion)
         }
         return window.result(entries, results.total)
     }
@@ -64,6 +69,31 @@ class SystemAudits(
 
         val entries = results.records.map {
             OperationAuditEntry(it.id, it.actorId, it.action, it.targetId, it.occurredAt)
+        }
+        return window.result(entries, results.total)
+    }
+
+    /**
+     * 按 HTTP 结果分页查询请求审计。
+     *
+     * @param window 页码和每页条数。
+     * @param successful 为 true 时查询低于 400 的状态，为 false 时查询 400 及以上，null 时查询全部。
+     * @return 按发生时间和 ID 倒序排列的请求审计页。
+     */
+    @Transactional(readOnly = true)
+    fun requestPage(window: PageWindow, successful: Boolean?): PageResult<RequestAuditEntry> {
+        val results = requests.selectPage(
+            Page<RequestAuditRecord>(window.page.toLong(), window.size.toLong()),
+            query<RequestAuditRecord>()
+                .lt(successful == true, "http_status", 400)
+                .ge(successful == false, "http_status", 400)
+                .orderByDesc("occurred_at", "id"),
+        )
+        val entries = results.records.map {
+            RequestAuditEntry(
+                it.id, it.actorId, it.action, it.httpMethod, it.routePattern, it.httpStatus, it.durationMs,
+                it.exceptionType, it.remoteAddress, it.ipRegion, it.userAgent, it.occurredAt,
+            )
         }
         return window.result(entries, results.total)
     }

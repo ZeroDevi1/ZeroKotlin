@@ -4,6 +4,7 @@ dev.zerokotlin.core.config.ElasticsearchConfiguration
 dev.zerokotlin.core.config.FileStorageAutoConfiguration
 dev.zerokotlin.core.config.JpaAutoConfiguration
 dev.zerokotlin.core.config.KafkaConfiguration
+dev.zerokotlin.core.config.ObservabilityAutoConfiguration
 dev.zerokotlin.core.config.OpenApiConfiguration
 dev.zerokotlin.core.config.PasswordHashingAutoConfiguration
 dev.zerokotlin.core.config.StompBrokerAutoConfiguration

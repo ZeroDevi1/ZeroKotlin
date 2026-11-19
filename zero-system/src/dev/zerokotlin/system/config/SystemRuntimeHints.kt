@@ -19,6 +19,7 @@ import dev.zerokotlin.system.entity.MenuRecord
 import dev.zerokotlin.system.entity.OperationAuditRecord
 import dev.zerokotlin.system.entity.PermissionRecord
 import dev.zerokotlin.system.entity.PositionRecord
+import dev.zerokotlin.system.entity.RequestAuditRecord
 import dev.zerokotlin.system.entity.RoleRecord
 import dev.zerokotlin.system.entity.ScheduledJobRecord
 import dev.zerokotlin.system.entity.SessionRecord
@@ -59,6 +60,7 @@ class SystemRuntimeHints : RuntimeHintsRegistrar {
             OperationAuditRecord::class.java,
             ScheduledJobRecord::class.java,
             JobRunRecord::class.java,
+            RequestAuditRecord::class.java,
             UserRow::class.java,
             AuthorityRow::class.java,
             AssignedRoleRow::class.java,

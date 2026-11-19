@@ -113,6 +113,7 @@ export interface LoginAuditEntry {
   successful: boolean
   remoteAddress: string
   occurredAt: number
+  ipRegion: string | null
 }
 
 export interface OperationAuditEntry {
@@ -120,6 +121,21 @@ export interface OperationAuditEntry {
   actorId: string
   action: string
   targetId: string
+  occurredAt: number
+}
+
+export interface RequestAuditEntry {
+  id: string
+  actorId: string | null
+  action: string
+  httpMethod: string
+  routePattern: string
+  httpStatus: number
+  durationMs: number
+  exceptionType: string | null
+  remoteAddress: string
+  ipRegion: string | null
+  userAgent: string | null
   occurredAt: number
 }
 
