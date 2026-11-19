@@ -40,7 +40,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.flywaydb:flyway-mysql")
-    runtimeOnly("org.xerial:sqlite-jdbc")
+    implementation("org.xerial:sqlite-jdbc")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("com.mysql:mysql-connector-j")
 

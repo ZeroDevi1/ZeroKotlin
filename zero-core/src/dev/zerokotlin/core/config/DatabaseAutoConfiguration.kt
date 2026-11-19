@@ -114,6 +114,10 @@ internal class DatabaseAutoConfiguration {
         addInnerInterceptor(PaginationInnerInterceptor())
     }
 
+    /** 让 MyBatis-Plus 将 UUID 主键作为单个 JDBC 参数绑定。 */
+    @Bean
+    fun uuidTypeHandler(): UuidTypeHandler = UuidTypeHandler()
+
     /**
      * 解析 SQLite 文件的绝对路径并创建父目录。
      *

@@ -14,7 +14,7 @@ import dev.zerokotlin.system.dto.UserSummary
 import dev.zerokotlin.system.security.USER_MANAGE
 import dev.zerokotlin.system.security.USER_READ
 import dev.zerokotlin.system.security.USER_UPDATE
-import dev.zerokotlin.system.service.SystemUsers
+import dev.zerokotlin.system.service.SystemUserService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/users")
 @Tag(name = "用户管理")
-class SystemUserController(private val users: SystemUsers) {
+class SystemUserController(private val users: SystemUserService) {
     /**
      * 分页查询当前用户有权查看的用户。
      *

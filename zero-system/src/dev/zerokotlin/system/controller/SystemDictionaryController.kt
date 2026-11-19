@@ -9,7 +9,7 @@ import dev.zerokotlin.system.dto.DictionaryItemRequest
 import dev.zerokotlin.system.dto.DictionarySummary
 import dev.zerokotlin.system.dto.UpdateDictionaryRequest
 import dev.zerokotlin.system.security.DICTIONARY_WRITE
-import dev.zerokotlin.system.service.SystemDictionaries
+import dev.zerokotlin.system.service.SystemDictionaryService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/dictionaries")
 @Tag(name = "字典管理")
-class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
+class SystemDictionaryController(private val dictionaries: SystemDictionaryService) {
     /**
      * 列出供管理界面使用的字典。
      *
@@ -49,7 +49,7 @@ class SystemDictionaryController(private val dictionaries: SystemDictionaries) {
         description = "需要 `system:dictionary:read` 权限。返回全部字典，包含已停用的字典，按字典编码升序排列。",
         responses = [ApiResponse(responseCode = "200", description = "字典列表", useReturnTypeSchema = true)],
     )
-    fun list(): List<DictionarySummary> = dictionaries.list()
+    fun list(): List<DictionarySummary> = dictionaries.summaries()
 
     /**
      * 为已认证用户读取启用字典的可用选项。

@@ -10,7 +10,7 @@ import dev.zerokotlin.system.dto.ReplacePositionMembersRequest
 import dev.zerokotlin.system.dto.UpdatePositionRequest
 import dev.zerokotlin.system.security.POSITION_READ
 import dev.zerokotlin.system.security.POSITION_WRITE
-import dev.zerokotlin.system.service.SystemPositions
+import dev.zerokotlin.system.service.SystemPositionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/positions")
 @Tag(name = "岗位管理")
-class SystemPositionController(private val positions: SystemPositions) {
+class SystemPositionController(private val positions: SystemPositionService) {
     /**
      * 分页读取岗位目录。
      *

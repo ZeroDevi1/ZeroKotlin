@@ -4,7 +4,7 @@ import dev.zerokotlin.system.dto.CreatedResource
 import dev.zerokotlin.system.dto.MenuNode
 import dev.zerokotlin.system.dto.MenuRequest
 import dev.zerokotlin.system.security.MENU_WRITE
-import dev.zerokotlin.system.service.SystemMenus
+import dev.zerokotlin.system.service.SystemMenuService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/menus")
 @Tag(name = "菜单管理")
-class SystemMenuController(private val menus: SystemMenus) {
+class SystemMenuController(private val menus: SystemMenuService) {
     /**
      * 读取管理用菜单树。
      *

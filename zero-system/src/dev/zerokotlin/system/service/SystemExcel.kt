@@ -21,8 +21,8 @@ import org.springframework.web.multipart.MultipartFile
 /** 定义系统资源的 Excel 列及转换规则，并将导入交给现有业务写入事务。 */
 @Service
 class SystemExcel(
-    private val users: SystemUsers,
-    private val dictionaries: SystemDictionaries,
+    private val users: SystemUserService,
+    private val dictionaries: SystemDictionaryService,
     private val writes: SystemWrites,
     private val transactions: TransactionTemplate,
 ) {

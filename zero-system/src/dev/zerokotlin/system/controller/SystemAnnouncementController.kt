@@ -7,7 +7,7 @@ import dev.zerokotlin.system.dto.AnnouncementRequest
 import dev.zerokotlin.system.dto.CreatedResource
 import dev.zerokotlin.system.security.ANNOUNCEMENT_READ
 import dev.zerokotlin.system.security.ANNOUNCEMENT_WRITE
-import dev.zerokotlin.system.service.SystemAnnouncements
+import dev.zerokotlin.system.service.SystemAnnouncementService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/announcements")
 @Tag(name = "公告管理")
-class SystemAnnouncementController(private val announcements: SystemAnnouncements) {
+class SystemAnnouncementController(private val announcements: SystemAnnouncementService) {
     /**
      * 分页查询各状态的公告。
      *

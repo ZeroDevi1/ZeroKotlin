@@ -21,7 +21,7 @@ zero-orders ── implementation ──▶ zero-core
 | 登录、Bearer 认证与方法鉴权 | `zero-system` 提供登录接口及 `BearerSessionAuthentication` Bean，用持久化会话解析用户，将有效权限点映射成 Spring Security authority。`zero-core` 的 Bearer 自动配置以该 Bean 为条件启用过滤链和方法鉴权。[Bearer 自动配置](../zero-core/src/dev/zerokotlin/core/config/BearerSecurityAutoConfiguration.kt) · [系统认证装配](../zero-system/src/dev/zerokotlin/system/config/SystemSecurity.kt) |
 | 当前操作者 | `zero-system` 提供 `CurrentActor` Bean，从已认证的 principal 读取用户 ID。[CurrentActor](../zero-core/src/dev/zerokotlin/core/CurrentActor.kt) · [系统认证装配](../zero-system/src/dev/zerokotlin/system/config/SystemSecurity.kt) |
 | 操作审计 | `zero-system` 提供 `OperationAudit` 实现，要求调用方已有事务。在事务内重新核验会话与权限，再写入 `sys_operation_audit`。[OperationAudit](../zero-core/src/dev/zerokotlin/core/OperationAudit.kt) · [系统写入与审计](../zero-system/src/dev/zerokotlin/system/service/SystemWrites.kt) |
-| 数据库与导航 | `zero-core` 先执行主迁移，再执行已声明 `ModuleMigration` Bean 的独立迁移。订单权限和菜单种子依赖 `zero-system` 主迁移建立的 `sys_permission` 和 `sys_menu`。系统按已装配模块和当前权限返回可见菜单。[迁移策略](../zero-core/src/dev/zerokotlin/core/config/DatabaseAutoConfiguration.kt) · [系统建表](../zero-system/resources/db/migration/common/V1__system.sql) · [菜单可见性](../zero-system/src/dev/zerokotlin/system/service/SystemOrganization.kt#L141) |
+| 数据库与导航 | `zero-core` 先执行主迁移，再执行已声明 `ModuleMigration` Bean 的独立迁移。订单权限和菜单种子依赖 `zero-system` 主迁移建立的 `sys_permission` 和 `sys_menu`。系统按已装配模块和当前权限返回可见菜单。[迁移策略](../zero-core/src/dev/zerokotlin/core/config/DatabaseAutoConfiguration.kt) · [系统建表](../zero-system/resources/db/migration/common/V1__system.sql) · [菜单可见性](../zero-system/src/dev/zerokotlin/system/service/impl/SystemMenuServiceImpl.kt#L63) |
 
 当前建议保留 `zero-system` 的启动入口、账号、权限、菜单和审计。现有 `zero-core` 契约已经覆盖接入这些能力的最小需求，系统功能也共用会话模型、数据源和事务管理。业务库如果需要独立运行，须另行提供启动入口、认证与审计实现，以及自身迁移所依赖的系统表。出现以下需求时再拆分。
 
@@ -162,13 +162,31 @@ import org.apache.ibatis.annotations.Mapper
 interface OrderMapper : BaseMapper<OrderRecord>
 ```
 
-创建 `service/OrderService.kt`。方法鉴权检查是否拥有对应权限点，SQL 的 `owner_id` 条件决定可见记录。`CurrentActor` 只返回用户 ID，本例采用固定的本人范围，即使系统角色具有 `ALL` 也按本人过滤。如果业务要采用部门及下级部门范围，应先为订单定义组织归属，再由系统实现通过明确的契约提供当前权限的数据范围，并将行级条件用于查询和更新。[现有行级权限示例](../zero-system/src/dev/zerokotlin/system/service/SystemUsers.kt) · [系统数据范围](system.md#权限与行级范围)
+创建 `service/OrderService.kt` 和 `service/impl/OrderServiceImpl.kt`。方法鉴权检查是否拥有对应权限点，SQL 的 `owner_id` 条件决定可见记录。`CurrentActor` 只返回用户 ID，本例采用固定的本人范围，即使系统角色具有 `ALL` 也按本人过滤。如果业务要采用部门及下级部门范围，应先为订单定义组织归属，再由系统实现通过明确的契约提供当前权限的数据范围，并将行级条件用于查询和更新。[现有行级权限示例](../zero-system/src/dev/zerokotlin/system/service/impl/SystemUserServiceImpl.kt) · [系统数据范围](system.md#权限与行级范围)
 
 ```kotlin
 package dev.zerokotlin.orders.service
 
+import com.baomidou.mybatisplus.spring.service.IService
+import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.orders.dto.CreateOrderRequest
+import dev.zerokotlin.orders.dto.CreatedOrder
+import dev.zerokotlin.orders.dto.OrderEntry
+import dev.zerokotlin.orders.entity.OrderRecord
+
+interface OrderService : IService<OrderRecord> {
+    fun list(window: PageWindow): PageResult<OrderEntry>
+    fun create(request: CreateOrderRequest): CreatedOrder
+}
+```
+
+```kotlin
+package dev.zerokotlin.orders.service.impl
+
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.core.CurrentActor
 import dev.zerokotlin.core.OperationAudit
 import dev.zerokotlin.core.PageResult
@@ -178,6 +196,7 @@ import dev.zerokotlin.orders.dto.CreatedOrder
 import dev.zerokotlin.orders.dto.OrderEntry
 import dev.zerokotlin.orders.entity.OrderRecord
 import dev.zerokotlin.orders.mapper.OrderMapper
+import dev.zerokotlin.orders.service.OrderService
 import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
@@ -189,15 +208,14 @@ private const val READ_ORDER = "orders:order:read"
 private const val WRITE_ORDER = "orders:order:write"
 
 @Service
-class OrderService(
-    private val orders: OrderMapper,
+class OrderServiceImpl(
     private val actor: CurrentActor,
     private val audit: OperationAudit,
-) {
+) : ServiceImpl<OrderMapper, OrderRecord>(), OrderService {
     @PreAuthorize("hasAuthority('$READ_ORDER')")
     @Transactional(readOnly = true)
-    fun list(window: PageWindow): PageResult<OrderEntry> {
-        val results = orders.selectPage(
+    override fun list(window: PageWindow): PageResult<OrderEntry> {
+        val results = getBaseMapper().selectPage(
             Page<OrderRecord>(window.page.toLong(), window.size.toLong()),
             QueryWrapper<OrderRecord>().eq("owner_id", actor.requireUserId()).orderByDesc("created_at", "id"),
         )
@@ -206,7 +224,7 @@ class OrderService(
 
     @PreAuthorize("hasAuthority('$WRITE_ORDER')")
     @Transactional
-    fun create(request: CreateOrderRequest): CreatedOrder {
+    override fun create(request: CreateOrderRequest): CreatedOrder {
         val title = request.title.trim()
         if (title.length !in 1..120) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "title 必须为 1 到 120 个字符")
@@ -217,7 +235,7 @@ class OrderService(
             ownerId = actor.requireUserId(),
             createdAt = System.currentTimeMillis(),
         )
-        check(orders.insert(order) == 1) { "订单写入失败" }
+        check(save(order)) { "订单写入失败" }
         audit.record(WRITE_ORDER, order.id)
         return CreatedOrder(order.id)
     }

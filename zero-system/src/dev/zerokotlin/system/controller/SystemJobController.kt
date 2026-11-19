@@ -17,7 +17,7 @@ import dev.zerokotlin.system.security.JOB_RESUME
 import dev.zerokotlin.system.security.JOB_RUN
 import dev.zerokotlin.system.security.JOB_UPDATE
 import dev.zerokotlin.system.service.JobHandlers
-import dev.zerokotlin.system.service.SystemJobs
+import dev.zerokotlin.system.service.SystemJobService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/jobs")
 @Tag(name = "定时任务")
-class SystemJobController(private val jobs: SystemJobs, private val handlers: JobHandlers) {
+class SystemJobController(private val jobs: SystemJobService, private val handlers: JobHandlers) {
     /** 返回任务定义及下一次待派发时间。 */
     @GetMapping
     @PreAuthorize("hasAuthority('$JOB_READ')")

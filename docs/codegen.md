@@ -37,17 +37,40 @@ XML 按读取表结构时的数据库方言生成。切换数据库类型时，�
 2. 将目标模块通过 `runtimeOnly(project(":zero-orders"))` 加入 `zero-system` 的运行时类路径。启动应用扫描职责包中的 Spring 组件和 `@Mapper`，并加载 `resources/mapper/` 下的 XML。
 3. 按[业务模块注册](system.md#业务模块注册)将 CLI 打印的编码注册到 `sys_permission`，再通过角色授予所需操作。上例生成 `orders:order:read`、`orders:order:create`、`orders:order:update`、`orders:order:delete`。
 
-上例生成 `src/dev/zerokotlin/orders/` 下的 `entity/OrderRecord.kt`、`dto/OrderModels.kt`、`mapper/OrderMapper.kt`、`service/OrderService.kt`、`controller/OrderController.kt`，以及 `resources/mapper/orders/OrderMapper.xml`。
+上例生成 `src/dev/zerokotlin/orders/` 下的 `entity/OrderRecord.kt`、`dto/OrderModels.kt`、`mapper/OrderMapper.kt`、`service/OrderService.kt`、`service/impl/OrderServiceImpl.kt`、`controller/OrderController.kt`，以及 `resources/mapper/orders/OrderMapper.xml`。Mapper 继承 MyBatis-Plus 的 `BaseMapper`，Service 接口继承 `IService`，实现继承 `ServiceImpl`。实体和 DTO 的字段说明优先采用 JDBC 列注释，缺失时使用数据库列名。
 
 | 操作 | 上例路径 | 权限后缀和成功响应 |
 | --- | --- | --- |
-| 分页 | `GET /api/orders/order?page=1&size=20` | `read`，按主键升序返回 `PageResult` |
+| 分页 | `GET /api/orders/order?page=1&size=20&filter.status=OPEN` | `read`，按主键升序返回 `PageResult` |
 | 详情 | `GET /api/orders/order/{id}` | `read`，返回单条记录 |
 | 创建 | `POST /api/orders/order` | `create`，返回 HTTP 201 和 `{id}` |
 | 替换可写字段 | `PUT /api/orders/order/{id}` | `update`，返回 HTTP 204 |
 | 物理删除 | `DELETE /api/orders/order/{id}` | `delete`，返回 HTTP 204 |
+| 导出报表 | `GET /api/orders/order/excel/export?filter.status=OPEN` | `read`，下载筛选结果的 XLSX |
+| 下载模板 | `GET /api/orders/order/excel/template` | `create`，下载空白 XLSX |
+| 批量新增 | `POST /api/orders/order/excel/import` | `create`，上传表单字段 `file`，返回 HTTP 201 和 `{"imported":3}` |
 
-生成的 Service 按操作鉴权，写入和 `OperationAudit` 在同一事务提交。缺少必填字段返回 HTTP 400，按主键操作时记录不存在返回 HTTP 404。默认读权限覆盖整张表，响应包含已映射的全部列。业务接入时按数据归属补充行级条件，按公开契约调整 DTO 字段，核对物理删除是否符合业务规则。表结构、权限注册与角色分配由目标模块维护。
+生成的 Controller 按操作鉴权，写入和 `OperationAudit` 在同一事务提交。缺少必填字段返回 HTTP 400，按主键操作时记录不存在返回 HTTP 404。默认读权限覆盖整张表，响应包含已映射的全部列。业务接入时按数据归属补充行级条件，按公开契约调整 DTO 字段，核对物理删除是否符合业务规则。表结构、权限注册与角色分配由目标模块维护。
+
+## 筛选与报表
+
+- 列表和导出共用 `filter.<Kotlin 属性名>` 等值筛选。多个字段按 AND 组合。字段须标注 `@field:CrudFilter`，且有 MyBatis-Plus 列映射。未知筛选字段、重复传值或类型错误返回 HTTP 400。
+- Excel 列由 DTO 上的 `@field:ReportColumn(name = "列名", order = 0)` 决定。生成器默认用数据库列名作表头，导出选入非二进制读字段，模板选入可从 Excel 填写的创建字段。表没有可导入字段或创建依赖必填二进制字段时，只生成导出接口。
+- 导入和导出各限 1000 条。上传限 1 MiB，使用下载模板，保留一张可见工作表的表头和列顺序。日期时间按 ISO 格式填写，长整数和定点小数用文本单元格保留精度，布尔值接受 `true`、`false`、`1`、`0`。空单元格沿用创建请求的空值和数据库默认值规则。
+- 导入逐行走创建服务，写入与审计在一个事务内提交。行级格式、必填项和数据库约束错误会标出原始 Excel 行号。唯一键冲突返回 HTTP 409，其他字段约束错误返回 HTTP 400。
+
+## 在手写 Controller 中复用
+
+继承 `ZeroCrudController<实体>`，传入该实体的 `IService`、实体类、事务管理器和 `OperationAudit`。在业务 Controller 上显式声明 Spring MVC 路由和 `@PreAuthorize`。
+
+| 基类方法 | 接入方式 |
+| --- | --- |
+| `queryPage`、`queryById` | 直接查询实体并转为公开 DTO。分页传入 `PageWindow` 和用 `@RequestParam` 接收的 `MultiValueMap<String, String>`。 |
+| `add`、`edit`、`delete` | 将已校验的请求转换为实体，传入对应权限编码。更新和删除遵循 MyBatis-Plus 的实体映射策略。 |
+| `exportXls` | 传入下载名、与分页相同的筛选参数、`XlsxReport` 和公开报表 DTO 的转换函数。 |
+| `templateXls`、`importXls` | 使用同一个 `XlsxReport`。给导入方法传入可写请求 DTO 的工厂和业务创建方法。创建方法加入当前事务。 |
+
+有数据归属、状态变更或跨表规则时，在业务 Service 中实现对应的查询和写入。在原生镜像模块中，参照生成的 Controller，用 `@RegisterReflection` 注册实体、Mapper 使用的 DTO 和报表字段。
 
 ## 表结构约定
 

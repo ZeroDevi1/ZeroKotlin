@@ -7,7 +7,7 @@ import dev.zerokotlin.system.security.FILE_DELETE
 import dev.zerokotlin.system.security.FILE_DOWNLOAD
 import dev.zerokotlin.system.security.FILE_READ
 import dev.zerokotlin.system.security.FILE_UPLOAD
-import dev.zerokotlin.system.service.SystemFiles
+import dev.zerokotlin.system.service.SystemFileService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
@@ -37,7 +37,7 @@ import org.springframework.web.multipart.MultipartFile
 @RestController
 @RequestMapping("/api/system/files")
 @Tag(name = "文件管理")
-class SystemFileController(private val files: SystemFiles) {
+class SystemFileController(private val files: SystemFileService) {
     /** 分页查询文件元数据及当前状态，支持文件名和业务分类筛选。 */
     @GetMapping
     @PreAuthorize("hasAuthority('$FILE_READ')")

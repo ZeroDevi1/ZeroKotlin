@@ -12,9 +12,9 @@ import dev.zerokotlin.system.dto.OwnProfileRequest
 import dev.zerokotlin.system.security.currentSystemActor
 import dev.zerokotlin.system.service.SystemAuthentication
 import dev.zerokotlin.system.service.SystemLoginCaptcha
-import dev.zerokotlin.system.service.SystemMenus
+import dev.zerokotlin.system.service.SystemMenuService
 import dev.zerokotlin.system.service.SystemSessionTransactions
-import dev.zerokotlin.system.service.SystemUsers
+import dev.zerokotlin.system.service.SystemUserService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content
@@ -48,9 +48,9 @@ import org.springframework.web.bind.annotation.RestController
 class SystemAuthenticationController(
     private val authentication: SystemAuthentication,
     private val sessions: SystemSessionTransactions,
-    private val menus: SystemMenus,
+    private val menus: SystemMenuService,
     private val captcha: SystemLoginCaptcha,
-    private val users: SystemUsers,
+    private val users: SystemUserService,
 ) {
     /** 查询是否启用验证码，启用时签发新挑战，关闭时返回 HTTP 204。 */
     @GetMapping("/captcha")

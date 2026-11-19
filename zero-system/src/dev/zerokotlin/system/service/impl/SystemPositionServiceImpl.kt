@@ -1,6 +1,7 @@
-package dev.zerokotlin.system.service
+package dev.zerokotlin.system.service.impl
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.CreatePositionRequest
@@ -15,6 +16,8 @@ import dev.zerokotlin.system.mapper.PositionMapper
 import dev.zerokotlin.system.mapper.UserMapper
 import dev.zerokotlin.system.security.POSITION_WRITE
 import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.service.SystemPositionService
+import dev.zerokotlin.system.service.SystemWrites
 import dev.zerokotlin.system.support.checkedCode
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
@@ -34,11 +37,12 @@ import org.springframework.transaction.annotation.Transactional
  * @property writes 串行化写入，核验岗位写入权限和系统管理员身份，并记录操作审计。
  */
 @Service
-class SystemPositions(
-    private val positions: PositionMapper,
+class SystemPositionServiceImpl(
     private val users: UserMapper,
     private val writes: SystemWrites,
-) {
+) : ServiceImpl<PositionMapper, PositionRecord>(), SystemPositionService {
+    private val positions: PositionMapper get() = getBaseMapper()
+
     /**
      * 在只读事务中查询岗位目录。
      *
@@ -46,7 +50,7 @@ class SystemPositions(
      * @return 按排序值和 ID 升序排列的岗位页，包含停用岗位。
      */
     @Transactional(readOnly = true)
-    fun list(window: PageWindow): PageResult<PositionEntry> {
+    override fun list(window: PageWindow): PageResult<PositionEntry> {
         val results = positions.selectPage(
             Page<PositionRecord>(window.page.toLong(), window.size.toLong()),
             query<PositionRecord>().orderByAsc("sort_order", "id"),
@@ -62,7 +66,7 @@ class SystemPositions(
      * @return 按用户名和 ID 升序排列的成员摘要，包含停用账号。
      */
     @Transactional(readOnly = true)
-    fun members(id: String): List<PositionMember> {
+    override fun members(id: String): List<PositionMember> {
         currentSystemActor().requireAdministrator()
         val position = positions.selectById(id) ?: missing("岗位")
         return users.findPositionMembers(position.id).map { PositionMember(it.id, it.username, it.displayName) }
@@ -75,7 +79,7 @@ class SystemPositions(
      * @return 新岗位 ID。
      */
     @Transactional
-    fun create(request: CreatePositionRequest): CreatedResource {
+    override fun create(request: CreatePositionRequest): CreatedResource {
         val actor = writes.authorize(POSITION_WRITE, administratorOnly = true)
         val code = checkedCode(request.code)
         if (positions.selectCount(query<PositionRecord>().eq("code", code)) != 0L) conflict("岗位编码已存在")
@@ -98,7 +102,7 @@ class SystemPositions(
      * @param request 新名称、必填的启用状态和排序值。
      */
     @Transactional
-    fun update(id: String, request: UpdatePositionRequest) {
+    override fun update(id: String, request: UpdatePositionRequest) {
         val actor = writes.authorize(POSITION_WRITE, administratorOnly = true)
         val position = positions.selectById(id) ?: missing("岗位")
         position.name = checkedText(request.name, "name")
@@ -115,7 +119,7 @@ class SystemPositions(
      * @param request 已存在用户的 ID 集合，每个 ID 长度须为 1～36，空集表示清空成员。
      */
     @Transactional
-    fun replaceMembers(id: String, request: ReplacePositionMembersRequest) {
+    override fun replaceMembers(id: String, request: ReplacePositionMembersRequest) {
         val actor = writes.authorize(POSITION_WRITE, administratorOnly = true)
         val position = positions.selectById(id) ?: missing("岗位")
         val userIds = request.userIds.map { it?.takeIf { id -> id.length in 1..36 } ?: invalid("用户 ID 无效") }

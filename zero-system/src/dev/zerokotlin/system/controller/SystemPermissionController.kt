@@ -4,7 +4,7 @@ import dev.zerokotlin.system.dto.CreatePermissionRequest
 import dev.zerokotlin.system.dto.PermissionSummary
 import dev.zerokotlin.system.dto.UpdatePermissionRequest
 import dev.zerokotlin.system.security.PERMISSION_WRITE
-import dev.zerokotlin.system.service.SystemPermissions
+import dev.zerokotlin.system.service.SystemPermissionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/permissions")
 @Tag(name = "权限点管理")
-class SystemPermissionController(private val permissions: SystemPermissions) {
+class SystemPermissionController(private val permissions: SystemPermissionService) {
     /**
      * 读取权限点目录。
      *
@@ -43,7 +43,7 @@ class SystemPermissionController(private val permissions: SystemPermissions) {
         description = "需要 `system:permission:read` 权限。包含启用和停用的权限点，按编码升序排列。",
         responses = [ApiResponse(responseCode = "200", description = "权限点列表", useReturnTypeSchema = true)],
     )
-    fun list(): List<PermissionSummary> = permissions.list()
+    fun list(): List<PermissionSummary> = permissions.summaries()
 
     /**
      * 登记一个自定义权限点，仅系统管理员可执行。

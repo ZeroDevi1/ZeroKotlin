@@ -1,6 +1,7 @@
-package dev.zerokotlin.system.service
+package dev.zerokotlin.system.service.impl
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.core.security.PlainTextInput
@@ -30,6 +31,8 @@ import dev.zerokotlin.system.security.USER_MANAGE
 import dev.zerokotlin.system.security.USER_READ
 import dev.zerokotlin.system.security.USER_UPDATE
 import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.service.SystemUserService
+import dev.zerokotlin.system.service.SystemWrites
 import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
 import dev.zerokotlin.system.support.ExcelImportRow
 import dev.zerokotlin.system.support.atExcelRow
@@ -77,8 +80,7 @@ private val mobilePattern = Regex("\\+?[0-9]{6,15}")
  * @property plainText 可启用的用户显示名清理器。
  */
 @Service
-class SystemUsers(
-    private val users: UserMapper,
+class SystemUserServiceImpl(
     private val departments: DepartmentMapper,
     private val roles: RoleMapper,
     private val relations: SystemRelationMapper,
@@ -86,7 +88,9 @@ class SystemUsers(
     private val passwords: PasswordEncoder,
     private val writes: SystemWrites,
     private val plainText: PlainTextInput,
-) {
+) : ServiceImpl<UserMapper, UserRecord>(), SystemUserService {
+    private val users: UserMapper get() = getBaseMapper()
+
     /**
      * 在只读事务中按用户读取权限的数据范围查询账号，并批量补齐已分配的角色。
      *
@@ -96,7 +100,7 @@ class SystemUsers(
      * @return 按用户名和 ID 升序排列的用户页，每项包含用户摘要和已分配的角色。
      */
     @Transactional(readOnly = true)
-    fun list(window: PageWindow, departmentId: String?, roleId: String?): PageResult<UserListEntry> {
+    override fun list(window: PageWindow, departmentId: String?, roleId: String?): PageResult<UserListEntry> {
         val filter = UserQuery(currentSystemActor(), USER_READ, departmentId, roleId)
         val entries = listEntries(users.findUsers(filter, window.size, window.offset))
         return window.result(entries, users.countUsers(filter))
@@ -104,7 +108,7 @@ class SystemUsers(
 
     /** 读取授权范围内符合筛选条件的用户和角色，超出单次导出上限时返回 400。 */
     @Transactional(readOnly = true)
-    fun forExcel(departmentId: String?, roleId: String?): List<UserListEntry> {
+    override fun forExcel(departmentId: String?, roleId: String?): List<UserListEntry> {
         val filter = UserQuery(currentSystemActor(), USER_READ, departmentId, roleId)
         val rows = users.findUsers(filter, EXCEL_EXPORT_ROWS + 1, 0)
         if (rows.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个用户，请缩小筛选范围")
@@ -128,13 +132,13 @@ class SystemUsers(
      * @return 用户摘要和按 ID 升序排列的角色 ID 列表。
      */
     @Transactional(readOnly = true)
-    fun detail(id: String): UserDetails {
+    override fun detail(id: String): UserDetails {
         val user = visibleUser(id, currentSystemActor(), USER_READ)
         return UserDetails(user.summary(), relations.findUserRoleIds(user.id))
     }
 
     /** 读取当前已认证账号的个人资料。 */
-    fun ownProfile(): OwnProfile = (users.selectById(currentSystemActor().user.id) ?: missing("用户")).ownProfile()
+    override fun ownProfile(): OwnProfile = (users.selectById(currentSystemActor().user.id) ?: missing("用户")).ownProfile()
 
     /**
      * 在写入锁下重新认证并保存本人资料。可选联系方式为空时清除。
@@ -143,7 +147,7 @@ class SystemUsers(
      * @return 更新后的个人资料。
      */
     @Transactional
-    fun updateOwnProfile(request: OwnProfileRequest): OwnProfile {
+    override fun updateOwnProfile(request: OwnProfileRequest): OwnProfile {
         val displayName = plainText.checkedPlainText(request.displayName, "displayName")
         val email = request.email?.trim()?.takeIf { it.isNotEmpty() }
         val mobile = request.mobile?.trim()?.takeIf { it.isNotEmpty() }
@@ -169,7 +173,7 @@ class SystemUsers(
      * @return 新用户 ID。
      */
     @Transactional
-    fun create(request: CreateUserRequest): CreatedResource {
+    override fun create(request: CreateUserRequest): CreatedResource {
         val account = prepareAccount(request)
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
         return insertAccount(account, request.roleIds, actor)
@@ -180,7 +184,7 @@ class SystemUsers(
      * 任意一行失败时回滚账号、角色关联及审计。
      */
     @Transactional
-    fun importExcel(rows: List<ExcelImportRow<CreateUserRequest>>) {
+    override fun importExcel(rows: List<ExcelImportRow<CreateUserRequest>>) {
         val current = currentSystemActor()
         current.requireScope(USER_MANAGE)
         current.requireAdministrator()
@@ -218,7 +222,7 @@ class SystemUsers(
      * @return 更新后的用户摘要。
      */
     @Transactional
-    fun updateProfile(id: String, request: UserProfileRequest): UserSummary {
+    override fun updateProfile(id: String, request: UserProfileRequest): UserSummary {
         val displayName = plainText.checkedPlainText(request.displayName, "displayName")
         val actor = writes.authorize(USER_UPDATE)
         val user = visibleUser(id, actor, USER_UPDATE)
@@ -237,7 +241,7 @@ class SystemUsers(
      * 密码为 null 表示沿用当前密码。
      */
     @Transactional
-    fun updateAccount(id: String, request: UserAccountRequest) {
+    override fun updateAccount(id: String, request: UserAccountRequest) {
         val enabled = request.enabled.requiredFlag()
         val passwordHash = request.password?.let { passwords.hashPassword(checkedPassword(it)) }
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
@@ -269,7 +273,7 @@ class SystemUsers(
      * @param request 新密码。
      */
     @Transactional
-    fun resetPassword(id: String, request: ResetPasswordRequest) {
+    override fun resetPassword(id: String, request: ResetPasswordRequest) {
         val hash = passwords.hashPassword(checkedPassword(request.newPassword))
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
         val user = visibleUser(id, actor, USER_MANAGE)
@@ -284,7 +288,7 @@ class SystemUsers(
      * @param ids 要删除的用户 ID。
      */
     @Transactional
-    fun delete(ids: List<String?>) {
+    override fun delete(ids: List<String?>) {
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
         val targets = checkedDeleteIds(ids)
         for (id in targets) {

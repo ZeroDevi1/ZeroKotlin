@@ -1,5 +1,6 @@
-package dev.zerokotlin.system.service
+package dev.zerokotlin.system.service.impl
 
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.system.dto.CreateDictionaryRequest
 import dev.zerokotlin.system.dto.CreatedResource
 import dev.zerokotlin.system.dto.DictionaryItem
@@ -12,6 +13,8 @@ import dev.zerokotlin.system.mapper.DictionaryItemMapper
 import dev.zerokotlin.system.mapper.DictionaryMapper
 import dev.zerokotlin.system.security.DICTIONARY_WRITE
 import dev.zerokotlin.system.security.SystemActor
+import dev.zerokotlin.system.service.SystemDictionaryService
+import dev.zerokotlin.system.service.SystemWrites
 import dev.zerokotlin.system.support.EXCEL_EXPORT_ROWS
 import dev.zerokotlin.system.support.ExcelImportRow
 import dev.zerokotlin.system.support.atExcelRow
@@ -52,20 +55,21 @@ private fun DictionaryItemRecord.item() = DictionaryItem(id, itemValue, label, s
  * @property writes 串行化维护操作，校验字典写入权限并记录审计。
  */
 @Service
-class SystemDictionaries(
-    private val dictionaries: DictionaryMapper,
+class SystemDictionaryServiceImpl(
     private val items: DictionaryItemMapper,
     private val writes: SystemWrites,
-) {
+) : ServiceImpl<DictionaryMapper, DictionaryRecord>(), SystemDictionaryService {
+    private val dictionaries: DictionaryMapper get() = getBaseMapper()
+
     /**
      * 读取管理用字典目录。
      *
      * @return 按编码升序排列的所有字典摘要，含停用字典。
      */
-    fun list(): List<DictionarySummary> = listDictionaries()
+    override fun summaries(): List<DictionarySummary> = listDictionaries()
 
     /** 读取可导出的字典目录，包含停用字典。 */
-    fun dictionariesForExcel(): List<DictionarySummary> =
+    override fun dictionariesForExcel(): List<DictionarySummary> =
         listDictionaries(EXCEL_EXPORT_ROWS + 1).also {
             if (it.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个字典")
         }
@@ -81,7 +85,7 @@ class SystemDictionaries(
      * @return 按排序值和 ID 升序排列的启用字典项。
      */
     @Transactional(readOnly = true)
-    fun values(code: String): List<DictionaryItem> {
+    override fun values(code: String): List<DictionaryItem> {
         val dictionary = dictionaries.selectOne(query<DictionaryRecord>().eq("code", checkedCode(code)).eq("enabled", 1))
             ?: missing("字典")
         return listItems(dictionary.id, enabledOnly = true)
@@ -94,7 +98,7 @@ class SystemDictionaries(
      * @return 以字典编码为键的选项列表，每组按排序值和 ID 升序排列。
      */
     @Transactional(readOnly = true)
-    fun valuesByCodes(codes: List<String?>): Map<String, List<DictionaryItem>> {
+    override fun valuesByCodes(codes: List<String?>): Map<String, List<DictionaryItem>> {
         if (codes.size !in 1..100) invalid("每次须查询 1 至 100 个字典编码")
         val uniqueCodes = codes.map { checkedCode(it ?: invalid("字典编码无效")) }.toSet()
         val matched = dictionaries.selectList(
@@ -114,17 +118,17 @@ class SystemDictionaries(
      * @param dictionaryId 所属字典 ID，不存在时返回 404。
      * @return 按排序值和 ID 升序排列的全部字典项，含停用项。
      */
-    fun items(dictionaryId: String): List<DictionaryItem> = listItems(dictionary(dictionaryId).id, enabledOnly = false)
+    override fun items(dictionaryId: String): List<DictionaryItem> = listItems(dictionary(dictionaryId).id, enabledOnly = false)
 
     /** 读取指定字典中可导出的字典项，包含停用项。 */
     @Transactional(readOnly = true)
-    fun itemsForExcel(dictionaryId: String): List<DictionaryItem> =
+    override fun itemsForExcel(dictionaryId: String): List<DictionaryItem> =
         listItems(dictionary(dictionaryId).id, enabledOnly = false, limit = EXCEL_EXPORT_ROWS + 1).also {
             if (it.size > EXCEL_EXPORT_ROWS) invalid("导出最多包含 $EXCEL_EXPORT_ROWS 个字典项")
         }
 
     /** 校验字典项操作指定的父字典，包含停用字典。 */
-    fun requireDictionary(dictionaryId: String) {
+    override fun requireDictionary(dictionaryId: String) {
         dictionary(dictionaryId)
     }
 
@@ -135,14 +139,14 @@ class SystemDictionaries(
      * @return 新字典 ID。
      */
     @Transactional
-    fun create(request: CreateDictionaryRequest): CreatedResource {
+    override fun create(request: CreateDictionaryRequest): CreatedResource {
         val actor = writes.authorize(DICTIONARY_WRITE)
         return insertDictionary(request, actor)
     }
 
     /** 在同一笔授权事务中新增全部字典。任意一行失败时回滚新增内容及审计。 */
     @Transactional
-    fun importExcel(rows: List<ExcelImportRow<CreateDictionaryRequest>>) {
+    override fun importExcel(rows: List<ExcelImportRow<CreateDictionaryRequest>>) {
         val actor = writes.authorize(DICTIONARY_WRITE)
         rows.forEach { row -> atExcelRow(row.number) { insertDictionary(row.request, actor) } }
     }
@@ -164,7 +168,7 @@ class SystemDictionaries(
      * @param request 字典的新名称及必填的启用状态。
      */
     @Transactional
-    fun update(id: String, request: UpdateDictionaryRequest) {
+    override fun update(id: String, request: UpdateDictionaryRequest) {
         val actor = writes.authorize(DICTIONARY_WRITE)
         val dictionary = dictionary(id)
         dictionary.name = checkedText(request.name, "name")
@@ -181,7 +185,7 @@ class SystemDictionaries(
      * @return 新字典项 ID。
      */
     @Transactional
-    fun createItem(dictionaryId: String, request: DictionaryItemRequest): CreatedResource {
+    override fun createItem(dictionaryId: String, request: DictionaryItemRequest): CreatedResource {
         val actor = writes.authorize(DICTIONARY_WRITE)
         val dictionary = dictionary(dictionaryId)
         return insertItem(dictionary.id, request, actor)
@@ -189,7 +193,7 @@ class SystemDictionaries(
 
     /** 在同一笔授权事务中向指定字典新增全部字典项。任意一行失败时回滚新增内容及审计。 */
     @Transactional
-    fun importItemsExcel(dictionaryId: String, rows: List<ExcelImportRow<DictionaryItemRequest>>) {
+    override fun importItemsExcel(dictionaryId: String, rows: List<ExcelImportRow<DictionaryItemRequest>>) {
         val actor = writes.authorize(DICTIONARY_WRITE)
         val dictionary = dictionary(dictionaryId)
         rows.forEach { row -> atExcelRow(row.number) { insertItem(dictionary.id, row.request, actor) } }
@@ -210,7 +214,7 @@ class SystemDictionaries(
      * @param request 字典项的新值、标签、排序值和启用状态。
      */
     @Transactional
-    fun updateItem(dictionaryId: String, id: String, request: DictionaryItemRequest) {
+    override fun updateItem(dictionaryId: String, id: String, request: DictionaryItemRequest) {
         val actor = writes.authorize(DICTIONARY_WRITE)
         val dictionary = dictionary(dictionaryId)
         val existing = items.selectById(id)?.takeIf { it.dictionaryId == dictionary.id } ?: missing("字典项")
@@ -220,7 +224,7 @@ class SystemDictionaries(
 
     /** 原子删除没有字典项引用的一组字典。 */
     @Transactional
-    fun delete(ids: List<String?>) {
+    override fun delete(ids: List<String?>) {
         val actor = writes.authorize(DICTIONARY_WRITE, administratorOnly = true)
         val targets = checkedDeleteIds(ids)
         for (id in targets) {
@@ -237,7 +241,7 @@ class SystemDictionaries(
 
     /** 原子删除同一字典下的一组字典项，包含停用项。 */
     @Transactional
-    fun deleteItems(dictionaryId: String, ids: List<String?>) {
+    override fun deleteItems(dictionaryId: String, ids: List<String?>) {
         val actor = writes.authorize(DICTIONARY_WRITE, administratorOnly = true)
         val dictionary = dictionary(dictionaryId)
         val targets = checkedDeleteIds(ids)

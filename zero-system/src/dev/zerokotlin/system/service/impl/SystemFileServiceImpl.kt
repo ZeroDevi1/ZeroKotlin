@@ -1,10 +1,11 @@
-package dev.zerokotlin.system.service
+package dev.zerokotlin.system.service.impl
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
-import dev.zerokotlin.core.PageResult
-import dev.zerokotlin.core.PageWindow
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.core.FileStorageBackend
 import dev.zerokotlin.core.FileStorages
+import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.system.dto.FileEntry
 import dev.zerokotlin.system.entity.FileRecord
 import dev.zerokotlin.system.entity.FileState
@@ -18,6 +19,8 @@ import dev.zerokotlin.system.security.FILE_READ
 import dev.zerokotlin.system.security.FILE_UPLOAD
 import dev.zerokotlin.system.security.SystemActor
 import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.service.SystemFileService
+import dev.zerokotlin.system.service.SystemWrites
 import dev.zerokotlin.system.support.checkedCode
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
@@ -41,18 +44,19 @@ import org.springframework.web.server.ResponseStatusException
 
 /** 管理文件元数据、存储内容与操作审计。存储 I/O 在数据库事务之外执行。 */
 @Service
-class SystemFiles(
-    private val files: FileMapper,
+class SystemFileServiceImpl(
     private val storages: FileStorages,
     private val writes: SystemWrites,
     transactionManager: PlatformTransactionManager,
-) {
+) : ServiceImpl<FileMapper, FileRecord>(), SystemFileService {
+    private val files: FileMapper get() = getBaseMapper()
+
     private val transactions = TransactionTemplate(transactionManager)
     private val logger = LoggerFactory.getLogger(javaClass)
 
     /** 按文件名片段和精确业务分类分页查询，按登记时间和 ID 倒序。 */
     @Transactional(readOnly = true)
-    fun list(window: PageWindow, name: String?, bizType: String?): PageResult<FileEntry> {
+    override fun list(window: PageWindow, name: String?, bizType: String?): PageResult<FileEntry> {
         currentSystemActor().requireScope(FILE_READ)
         val filters = query<FileRecord>().orderByDesc("created_at", "id")
         if (!name.isNullOrBlank()) {
@@ -67,7 +71,7 @@ class SystemFiles(
 
     /** 登记上传意图，写入对象后发布文件并记录审计。失败时尝试回收未发布的对象。 */
     @Transactional(propagation = Propagation.NEVER)
-    fun upload(file: MultipartFile, bizType: String?): FileEntry {
+    override fun upload(file: MultipartFile, bizType: String?): FileEntry {
         val storage = storages.default
         val name = file.originalFilename.orEmpty().substringAfterLast('/').substringAfterLast('\\')
         if (name.any { it.isISOControl() }) invalid("文件名无效")
@@ -112,7 +116,7 @@ class SystemFiles(
 
     /** 打开可用对象，提交下载审计后将流交给调用方，回调结束时关闭流。 */
     @Transactional(propagation = Propagation.NEVER)
-    fun download(id: UUID, consume: (FileEntry, InputStream) -> Unit) {
+    override fun download(id: UUID, consume: (FileEntry, InputStream) -> Unit) {
         currentSystemActor().requireScope(FILE_DOWNLOAD)
         val record = availableFile(id.toString())
         val input = storageOperation("下载", record.id) { storageOf(record).open(id) } ?: missing("文件内容")
@@ -128,7 +132,7 @@ class SystemFiles(
 
     /** 禁止新下载，再清理对象和元数据。存储失败时保留删除状态供授权用户重试。 */
     @Transactional(propagation = Propagation.NEVER)
-    fun delete(id: UUID) {
+    override fun delete(id: UUID) {
         val (record, actor) = transactions.execute {
             val actor = writes.authorize(FILE_DELETE)
             val record = files.selectById(id.toString()) ?: return@execute null

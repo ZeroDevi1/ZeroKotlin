@@ -11,7 +11,7 @@ import dev.zerokotlin.system.dto.RoleMenusRequest
 import dev.zerokotlin.system.dto.RoleSummary
 import dev.zerokotlin.system.dto.UpdateRoleRequest
 import dev.zerokotlin.system.security.ROLE_WRITE
-import dev.zerokotlin.system.service.SystemRoles
+import dev.zerokotlin.system.service.SystemRoleService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/system/roles")
 @Tag(name = "角色管理")
-class SystemRoleController(private val roles: SystemRoles) {
+class SystemRoleController(private val roles: SystemRoleService) {
     /**
      * 分页读取角色目录。
      *

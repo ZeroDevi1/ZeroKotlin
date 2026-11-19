@@ -1,18 +1,19 @@
-package dev.zerokotlin.system.service
+package dev.zerokotlin.system.service.impl
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl
 import dev.zerokotlin.core.PageResult
 import dev.zerokotlin.core.PageWindow
 import dev.zerokotlin.core.security.PlainTextInput
 import dev.zerokotlin.system.dto.AnnouncementEntry
 import dev.zerokotlin.system.dto.AnnouncementRequest
 import dev.zerokotlin.system.dto.CreatedResource
-import dev.zerokotlin.system.dto.InboxEntry
 import dev.zerokotlin.system.entity.AnnouncementRecord
 import dev.zerokotlin.system.entity.AnnouncementStatus
 import dev.zerokotlin.system.mapper.AnnouncementMapper
 import dev.zerokotlin.system.security.ANNOUNCEMENT_WRITE
-import dev.zerokotlin.system.security.currentSystemActor
+import dev.zerokotlin.system.service.SystemAnnouncementService
+import dev.zerokotlin.system.service.SystemWrites
 import dev.zerokotlin.system.support.checkedPlainText
 import dev.zerokotlin.system.support.checkedText
 import dev.zerokotlin.system.support.conflict
@@ -33,11 +34,12 @@ private const val ANNOUNCEMENT_BODY_MAX_LENGTH = 16_000
  * @property plainText 可启用的公告标题清理器。
  */
 @Service
-class SystemAnnouncements(
-    private val announcements: AnnouncementMapper,
+class SystemAnnouncementServiceImpl(
     private val writes: SystemWrites,
     private val plainText: PlainTextInput,
-) {
+) : ServiceImpl<AnnouncementMapper, AnnouncementRecord>(), SystemAnnouncementService {
+    private val announcements: AnnouncementMapper get() = getBaseMapper()
+
     /**
      * 在只读事务中查询管理用公告列表。
      *
@@ -45,7 +47,7 @@ class SystemAnnouncements(
      * @return 按创建时间和 ID 倒序排列的公告页，包含各状态的记录。
      */
     @Transactional(readOnly = true)
-    fun list(window: PageWindow): PageResult<AnnouncementEntry> {
+    override fun list(window: PageWindow): PageResult<AnnouncementEntry> {
         val results = announcements.selectPage(
             Page<AnnouncementRecord>(window.page.toLong(), window.size.toLong()),
             query<AnnouncementRecord>().orderByDesc("created_at", "id"),
@@ -63,7 +65,7 @@ class SystemAnnouncements(
      * @return 新公告 ID。
      */
     @Transactional
-    fun create(request: AnnouncementRequest): CreatedResource {
+    override fun create(request: AnnouncementRequest): CreatedResource {
         val actor = writes.authorize(ANNOUNCEMENT_WRITE)
         val now = System.currentTimeMillis()
         val announcement = AnnouncementRecord(
@@ -85,7 +87,7 @@ class SystemAnnouncements(
      * @param request 草稿的新标题和正文。
      */
     @Transactional
-    fun update(id: String, request: AnnouncementRequest) {
+    override fun update(id: String, request: AnnouncementRequest) {
         val actor = writes.authorize(ANNOUNCEMENT_WRITE)
         val announcement = announcements.selectById(id) ?: missing("公告")
         if (announcement.status != AnnouncementStatus.DRAFT.name) conflict("仅草稿公告可以修改")
@@ -103,7 +105,7 @@ class SystemAnnouncements(
      * @param id 待发布的公告 ID。
      */
     @Transactional
-    fun publish(id: String) =
+    override fun publish(id: String) =
         transition(id, AnnouncementStatus.DRAFT, AnnouncementStatus.PUBLISHED, "announcement.publish")
 
     /**
@@ -112,7 +114,7 @@ class SystemAnnouncements(
      * @param id 待撤回的公告 ID。
      */
     @Transactional
-    fun revoke(id: String) =
+    override fun revoke(id: String) =
         transition(id, AnnouncementStatus.PUBLISHED, AnnouncementStatus.REVOKED, "announcement.revoke")
 
     /**
@@ -134,49 +136,5 @@ class SystemAnnouncements(
         if (to == AnnouncementStatus.PUBLISHED) announcement.publishedAt = now
         announcements.updateById(announcement)
         writes.record(actor, action, announcement.id)
-    }
-}
-
-/**
- * 提供按用户区分已读状态的已发布公告收件箱。
- *
- * @property announcements 查询可见公告和读标记，保存首次阅读时间。
- * @property writes 标记已读时串行化写入并重新认证当前会话。
- */
-@Service
-class SystemInbox(private val announcements: AnnouncementMapper, private val writes: SystemWrites) {
-    /**
-     * 在只读事务中分页查询当前用户的收件箱。
-     *
-     * @param window 页码和每页条数。
-     * @param unreadOnly 为 true 时仅匹配该用户没有已读记录的公告。
-     * @return 按发布时间和公告 ID 倒序排列的一页已发布公告及匹配总数。
-     */
-    @Transactional(readOnly = true)
-    fun list(window: PageWindow, unreadOnly: Boolean): PageResult<InboxEntry> {
-        val userId = currentSystemActor().user.id
-        val entries = announcements.findInbox(userId, unreadOnly, window)
-        return window.result(entries, announcements.countInbox(userId, unreadOnly))
-    }
-
-    /**
-     * 重新认证当前用户并为已发布公告保存首次阅读时间。重复标记会保留原时间。
-     *
-     * @param id 待标记的公告 ID。目标不存在或当前未发布时返回 404。
-     */
-    @Transactional
-    fun markRead(id: String) {
-        val userId = writes.lockAndAuthenticate().user.id
-        val announcementId = announcements.findPublishedId(id) ?: missing("公告")
-        if (announcements.findReadAt(userId, announcementId) == null) {
-            announcements.insertRead(userId, announcementId, System.currentTimeMillis())
-        }
-    }
-
-    /** 在系统写入锁内重新认证当前会话，为所有已发布的未读公告记录同一已读时间。 */
-    @Transactional
-    fun markAllRead() {
-        val userId = writes.lockAndAuthenticate().user.id
-        announcements.insertUnreadAsRead(userId, System.currentTimeMillis())
     }
 }

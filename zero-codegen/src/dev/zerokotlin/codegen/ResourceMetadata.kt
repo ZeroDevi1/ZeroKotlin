@@ -14,28 +14,25 @@ internal enum class CodegenDatabase(val urlPrefix: String, private val quote: Ch
     fun quote(name: String): String = "$quote$name$quote"
 }
 
-/** Kotlin 类型、MyBatis 构造器参数类型和绑定 SQL NULL 时使用的 JDBC 类型。 */
+/** Kotlin 类型和绑定 SQL 参数时使用的 JDBC 类型。 */
 internal enum class ColumnType(
     val kotlin: String,
-    val javaType: String,
     val jdbcType: String,
-    val primitive: Boolean = false,
-    val handler: String? = null,
 ) {
-    BOOLEAN("Boolean", "boolean", "BOOLEAN", primitive = true),
-    INT("Int", "int", "INTEGER", primitive = true),
-    LONG("Long", "long", "BIGINT", primitive = true),
-    BIG_INTEGER("java.math.BigInteger", "java.math.BigInteger", "DECIMAL"),
-    FLOAT("Float", "float", "REAL", primitive = true),
-    DOUBLE("Double", "double", "DOUBLE", primitive = true),
-    DECIMAL("java.math.BigDecimal", "java.math.BigDecimal", "DECIMAL"),
-    STRING("String", "string", "VARCHAR"),
-    BYTES("ByteArray", "_byte[]", "VARBINARY"),
-    DATE("java.time.LocalDate", "java.time.LocalDate", "DATE"),
-    TIME("java.time.LocalTime", "java.time.LocalTime", "TIME"),
-    TIMESTAMP("java.time.LocalDateTime", "java.time.LocalDateTime", "TIMESTAMP"),
-    TIMESTAMP_TZ("java.time.OffsetDateTime", "java.time.OffsetDateTime", "TIMESTAMP_WITH_TIMEZONE"),
-    UUID("java.util.UUID", "java.util.UUID", "OTHER", handler = "org.apache.ibatis.type.ObjectTypeHandler"),
+    BOOLEAN("Boolean", "BOOLEAN"),
+    INT("Int", "INTEGER"),
+    LONG("Long", "BIGINT"),
+    BIG_INTEGER("java.math.BigInteger", "DECIMAL"),
+    FLOAT("Float", "REAL"),
+    DOUBLE("Double", "DOUBLE"),
+    DECIMAL("java.math.BigDecimal", "DECIMAL"),
+    STRING("String", "VARCHAR"),
+    BYTES("ByteArray", "VARBINARY"),
+    DATE("java.time.LocalDate", "DATE"),
+    TIME("java.time.LocalTime", "TIME"),
+    TIMESTAMP("java.time.LocalDateTime", "TIMESTAMP"),
+    TIMESTAMP_TZ("java.time.OffsetDateTime", "TIMESTAMP_WITH_TIMEZONE"),
+    UUID("java.util.UUID", "OTHER"),
 }
 
 /** 收集数据库列的声明类型、可空性、主键和数据库托管写入信息。 */
@@ -49,6 +46,7 @@ private data class ColumnMetadata(
     val identity: Boolean,
     val computed: Boolean,
     val hasDefault: Boolean,
+    val remarks: String? = null,
 )
 
 /** 已验证的列及其 Kotlin 属性。 */
@@ -60,7 +58,12 @@ internal data class ResourceColumn(
     val identity: Boolean,
     val computed: Boolean,
     val hasDefault: Boolean,
-)
+    val remarks: String?,
+) {
+    /** 字段说明优先沿用 JDBC 列注释。 */
+    val description: String = remarks?.replace(Regex("[\\s\\p{Cntrl}]+"), " ")?.trim()
+        ?.takeIf(String::isNotEmpty) ?: "数据库列 $sqlName。"
+}
 
 /** 经校验的单表 CRUD 生成模型。 */
 internal class ResourceMetadata(
@@ -73,6 +76,9 @@ internal class ResourceMetadata(
     val key = columns.first()
     val createColumns = columns.filterNot { it.identity || it.computed }
     val updateColumns = createColumns.filterNot { it == key }
+    val importColumns = createColumns.filter { it.type != ColumnType.BYTES }.takeUnless {
+        createColumns.any { it.type == ColumnType.BYTES && requiredOnCreate(it) }
+    }.orEmpty()
     val namespace = packageName.removePrefix("dev.zerokotlin.")
     private val route = identifierWords(name).joinToString("-")
     val apiPath = "/api/${namespace.replace('.', '/')}/$route"
@@ -155,11 +161,10 @@ internal fun readResource(connection: Connection, options: CodegenOptions): Reso
     val key = keys.single()
     require(!key.nullable && !key.computed) { "主键 ${key.name} 须为不可空且非计算列" }
 
-    // MyBatis 的构造器映射要求主键 idArg 位于普通 arg 之前。
     val resourceColumns = (listOf(key) + columns.filterNot(ColumnMetadata::primaryKey)).map { column ->
         ResourceColumn(
             column.name, propertyName(column.name), columnType(database, column),
-            column.nullable, column.identity, column.computed, column.hasDefault,
+            column.nullable, column.identity, column.computed, column.hasDefault, column.remarks,
         )
     }
     val duplicateProperties = resourceColumns.groupingBy(ResourceColumn::property).eachCount().filterValues { it > 1 }
@@ -267,6 +272,7 @@ private fun readJdbcColumns(connection: Connection, options: CodegenOptions): Pa
                     identity = rows.getString("IS_AUTOINCREMENT") == "YES",
                     computed = mysqlComputed?.contains(name) ?: (rows.getString("IS_GENERATEDCOLUMN") == "YES"),
                     hasDefault = rows.getString("COLUMN_DEF") != null,
+                    remarks = rows.getString("REMARKS"),
                 )
                 add(rows.getInt("ORDINAL_POSITION") to column)
             }

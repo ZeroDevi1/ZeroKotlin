@@ -8,8 +8,8 @@ import dev.zerokotlin.system.dto.DepartmentRequest
 import dev.zerokotlin.system.dto.UserListEntry
 import dev.zerokotlin.system.security.DEPARTMENT_WRITE
 import dev.zerokotlin.system.security.USER_READ
-import dev.zerokotlin.system.service.SystemDepartments
-import dev.zerokotlin.system.service.SystemUsers
+import dev.zerokotlin.system.service.SystemDepartmentService
+import dev.zerokotlin.system.service.SystemUserService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.enums.ParameterIn
@@ -38,8 +38,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/system/departments")
 @Tag(name = "部门管理")
 class SystemDepartmentController(
-    private val departments: SystemDepartments,
-    private val users: SystemUsers,
+    private val departments: SystemDepartmentService,
+    private val users: SystemUserService,
 ) {
     /**
      * 读取组织架构。
