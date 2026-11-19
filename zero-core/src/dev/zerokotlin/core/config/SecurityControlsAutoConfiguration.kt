@@ -4,6 +4,7 @@ import dev.zerokotlin.core.CurrentActor
 import dev.zerokotlin.core.security.ApiRateLimit
 import dev.zerokotlin.core.security.LocalSecurityState
 import dev.zerokotlin.core.security.PlainTextInput
+import dev.zerokotlin.core.security.PlainTextParameterFilter
 import dev.zerokotlin.core.security.RateLimitBy
 import dev.zerokotlin.core.security.RedisSecurityState
 import dev.zerokotlin.core.security.SecurityState
@@ -14,7 +15,11 @@ import java.util.HexFormat
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfiguration
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.cache.CacheManager
 import org.springframework.context.annotation.Bean
 import org.springframework.http.HttpHeaders
@@ -24,10 +29,30 @@ import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
+/**
+ * 为管理端和业务模块指定可以按纯文本读取的请求参数。
+ * @property parameterNames 参与过滤的参数名，默认保留每个接口既有的参数约定。
+ * @property excludePaths 豁免过滤的应用内路径，支持 Ant 路径模式。
+ */
+@ConfigurationProperties("zero.security.xss")
+internal data class PlainTextParameterProperties(
+    val parameterNames: Set<String> = emptySet(),
+    val excludePaths: List<String> = emptyList(),
+)
+
 /** 为 Servlet 应用装配纯文本清理和接口限流，复用缓存配置选定的状态后端。 */
 @AutoConfiguration(after = [ZeroCacheAutoConfiguration::class])
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@EnableConfigurationProperties(PlainTextParameterProperties::class)
 internal class SecurityControlsAutoConfiguration {
+    /** 将已配置的查询参数与表单字段统一作为纯文本读取。 */
+    @Bean
+    @ConditionalOnProperty(prefix = "zero.security.xss", name = ["enabled"], havingValue = "true")
+    fun plainTextParameters(config: PlainTextParameterProperties, cleaner: PlainTextInput) =
+        FilterRegistrationBean(PlainTextParameterFilter(cleaner, config.parameterNames, config.excludePaths)).apply {
+            addUrlPatterns("/api/*")
+        }
+
     /** 提供按字段显式调用的清理器，默认维持原有文本输入行为。 */
     @Bean
     fun plainTextInput(@Value("\${zero.security.xss.enabled:false}") enabled: Boolean) =

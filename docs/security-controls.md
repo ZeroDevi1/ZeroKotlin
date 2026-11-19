@@ -5,6 +5,8 @@
 | Spring 属性 | 默认值 | 行为 |
 | --- | --- | --- |
 | `zero.security.xss.enabled` | `false` | 为已接入的普通文本字段清理 HTML 标记和脚本内容。 |
+| `zero.security.xss.parameter-names` | 空列表 | 启用清理后，Servlet 过滤器处理 `/api/*` 下指定名称的查询和表单参数，包括同名的多个值。 |
+| `zero.security.xss.exclude-paths` | 空列表 | 豁免参数过滤的应用内路径，支持 `/api/example/**` 等模式。 |
 | `zero.security.rate-limit.enabled` | `true` | 启用标注了 `@ApiRateLimit` 的接口配额。 |
 | `zero.system.audit.mask-remote-address` | `false` | 对登录和请求审计响应中的对端地址脱敏。 |
 | `zero.system.captcha.enabled` | `false` | 登录时要求图形验证码。 |
@@ -17,6 +19,7 @@
 - `GET /api/system/audits/logins` 要求 `system:audit:read` 权限。启用地址脱敏后，`remoteAddress` 只显示前三个字符，其余以星号覆盖，例如 `192.0.2.42` 显示为 `192*******`。实际审计仍保存请求对端地址。模块的响应 DTO 可使用 `@get:Masked(prefix = 3, suffix = 4) val phone: String`。Jackson 在写 JSON 时按字段留出指定的首尾码点；原值仍可用于业务查询。
 - 新建或编辑公告时，启用清理后将标题 `<b>维护通知</b>` 保存为 `维护通知`。新建账号和修改资料时，用户显示名应用同一规则。清理后为空的字段返回 400。公告正文、字典值、路径、账号和密码沿用各自的校验，令牌及二进制数据不经过该清理器。
 - 在新模块中注入 `PlainTextInput`，为已校验长度且明确按普通文本处理的字段调用 `clean(value)`。输出端按上下文转义，Vue 用插值显示这些字段。[jsoup Safelist](https://jsoup.org/apidocs/org/jsoup/safety/Safelist)
+- 例如，配置 `zero.security.xss.parameter-names: [keyword]` 即可为新模块的搜索词启用相同规则。根据字段契约选择可清理的名称。过滤器跳过认证路径、WebSocket 握手和 multipart 上传。
 
 ## 接口限流
 
