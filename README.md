@@ -1,6 +1,6 @@
 # ZeroKotlin
 
-ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化后端脚手架，提供用户、角色、部门、菜单、数据范围与审计 API。默认使用 SQLite 文件和 Caffeine 本地缓存，可按需接入 PostgreSQL、MySQL、Redis、Elasticsearch 和 Kafka。
+ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化脚手架，配套 Vue 3 + TypeScript 管理端。它提供组织与岗位管理、角色与数据权限、字典、审计、公告发布和个人收件箱。默认使用 SQLite 文件和 Caffeine 本地缓存，可按需接入 PostgreSQL、MySQL、Redis、Elasticsearch 和 Kafka。
 
 ## 首次启动
 
@@ -29,6 +29,17 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 
 应用在空用户表中创建首个管理员。后续启动可以移除这两个环境变量。运行期间可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
 
+## 启动管理端
+
+后端启动后，在另一个终端进入 `zero-web`。使用 Node.js 22.12 或更高版本和 pnpm，在该目录执行以下命令。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+打开终端显示的地址（默认 [localhost:5173](http://localhost:5173)），使用后端初始化的账号登录。开发服务器将 `/api` 转发至 `http://127.0.0.1:8080`，可通过 `ZERO_WEB_API_TARGET` 调整。生产部署说明见[管理端文档](zero-web/README.md)。
+
 ## 工程
 
 工程锁定 Kotlin 2.4.21、Spring Boot 4.1.2 和 Gradle 9.7.0。Kotlin 编译插件与运行库 BOM 共用一个版本号。[Gradle 版本目录](gradle/libs.versions.toml)
@@ -38,6 +49,7 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 | zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。JPA、Elasticsearch、Kafka 由同一项目的 Gradle feature 提供。 |
 | zero-system | 账号、角色、权限、部门、菜单、字典、令牌会话和审计 |
 | zero-app | 应用启动与模块装配 |
+| zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
 
 ## 配置与二次开发
 
@@ -45,6 +57,7 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 | --- | --- |
 | 选择数据库、配置 Redis、添加 MyBatis 或 JPA 访问层 | [数据源、迁移与缓存](docs/data.md) |
 | 调用登录、角色、部门、行级权限和审计接口 | [系统 API 和权限表](docs/system.md) |
+| 管理岗位和成员、发布或撤回公告、读取个人收件箱 | [岗位、公告和收件箱 API](docs/organization-notices.md) |
 | 添加可卸载模块、启用搜索或收发 Kafka 消息 | [扩展指南与请求示例](docs/extensions.md) |
 | 用 GraalVM 25 构建 SQLite 与 Caffeine 的最小原生应用 | [Native 构建配置与待验证范围](docs/native.md) |
 
