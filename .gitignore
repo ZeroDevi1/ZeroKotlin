@@ -1,0 +1,17 @@
+/.idea/
+.gradle/
+.kotlin/
+**/build/
+out/
+*.iml
+.DS_Store
+.env
+.env.*
+!.env.example
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.log
