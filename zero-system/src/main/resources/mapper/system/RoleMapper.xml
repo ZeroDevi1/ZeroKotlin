@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dev.zerokotlin.system.RoleMapper">
+    <resultMap id="roleRow" type="dev.zerokotlin.system.RoleRecord">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="data_scope" property="dataScope"/>
+        <result column="enabled" property="enabled"/>
+    </resultMap>
+
+    <sql id="roleFilters">
+        <where>
+            <if test="enabled != null">
+                enabled = #{enabled}
+            </if>
+        </where>
+    </sql>
+
+    <select id="countRoles" resultType="long">
+        SELECT COUNT(*) FROM sys_role
+        <include refid="roleFilters"/>
+    </select>
+
+    <select id="findRoles" resultMap="roleRow">
+        SELECT id, code, name, data_scope, enabled FROM sys_role
+        <include refid="roleFilters"/>
+        ORDER BY code, id
+        LIMIT #{window.size} OFFSET #{window.offset}
+    </select>
+</mapper>
