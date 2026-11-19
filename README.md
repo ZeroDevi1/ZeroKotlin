@@ -23,11 +23,8 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 
 | 模块 | 职责 |
 | --- | --- |
-| zero-core | 当前用户、分页等公共业务契约 |
-| zero-system | 身份、授权、部门、字典与审计 |
-| zero-data-mybatis / zero-data-jpa | 数据源、迁移与持久化接入 |
-| zero-cache | 本地与 Redis 缓存 |
-| zero-search-elasticsearch / zero-messaging-kafka | 搜索与消息扩展 |
+| zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。JPA、Elasticsearch、Kafka 由同一项目的 Gradle feature 提供。 |
+| zero-system | 账号、角色、权限、部门、菜单、字典、令牌会话和审计 |
 | modules/example | 可移除的业务模块示例 |
 | zero-app | 应用启动与模块装配 |
 
@@ -42,4 +39,6 @@ export ZERO_SYSTEM_ADMIN_PASSWORD
 
 数据库自动模式只探测已配置的 PostgreSQL、MySQL 地址，均不可达时使用 SQLite。缓存自动模式优先使用已配置且可达的 Redis。数据源与缓存后端在本次进程内固定，切换数据库只改变读写目标，各库独立保存数据。
 
-设计参考 [JeecgBoot](https://github.com/jeecgboot/JeecgBoot) 的组织和权限模型，以及 [zeta-kotlin](https://github.com/xia5800/zeta-kotlin) 的 Kotlin 业务模块划分。
+Web、JPA、健康端点和 Swagger UI 的通用默认值位于 `zero-core/src/main/resources/zero-core-defaults.properties`。部署时可通过应用配置、环境变量或命令行参数覆盖。
+
+工程划分参考 JeecgBoot 将共享基础设施集中到 `jeecg-boot-base-core` 的做法。组织与权限模型参考 JeecgBoot，Kotlin 业务模块划分参考 zeta-kotlin。[JeecgBoot](https://github.com/jeecgboot/JeecgBoot/tree/main/jeecg-boot/jeecg-boot-base-core) · [zeta-kotlin](https://github.com/xia5800/zeta-kotlin)

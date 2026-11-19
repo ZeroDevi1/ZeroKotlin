@@ -10,8 +10,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ZeroKotlin"
-include(
-    "zero-core", "zero-app", "zero-system", "zero-cache",
-    "zero-data-mybatis", "zero-data-jpa", "zero-search-elasticsearch",
-    "zero-messaging-kafka", "modules:example"
-)
+include("zero-core", "zero-system", "zero-app", "modules:example")

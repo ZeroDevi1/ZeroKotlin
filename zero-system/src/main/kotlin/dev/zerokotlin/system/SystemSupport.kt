@@ -2,7 +2,6 @@ package dev.zerokotlin.system
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper
 import dev.zerokotlin.core.OperationAudit
-import dev.zerokotlin.core.PageResult
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Component
@@ -13,16 +12,6 @@ import java.util.Locale
 import java.util.UUID
 
 const val ADMIN_ROLE_ID = "system-admin"
-
-class PageWindow(val page: Int, val size: Int) {
-    init {
-        if (page < 1 || size !in 1..100) invalid("page 必须大于等于 1，size 必须介于 1 和 100 之间")
-    }
-
-    val offset: Long = (page - 1L) * size
-
-    fun <T> result(items: List<T>, total: Long): PageResult<T> = PageResult(items, total, page, size)
-}
 
 class UserQuery(
     actor: SystemActor,

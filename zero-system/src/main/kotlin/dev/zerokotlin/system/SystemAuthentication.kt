@@ -1,5 +1,7 @@
 package dev.zerokotlin.system
 
+import dev.zerokotlin.core.security.BearerTokens
+import dev.zerokotlin.core.security.hashPassword
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationArguments
@@ -35,7 +37,7 @@ class SystemAuthentication(
     private val transactions: SystemSessionTransactions,
     private val loginAudit: LoginAuditMapper,
 ) {
-    private val dummyHash = passwords.encode(SystemTokens.issue())
+    private val dummyHash = passwords.hashPassword(BearerTokens.issue())
 
     fun login(request: LoginRequest, address: String): LoginResponse? {
         val username = normalizeUsername(request.username)
@@ -70,9 +72,9 @@ class SystemSessionTransactions(
 
         val now = System.currentTimeMillis()
         val expiresAt = now + sessionSeconds * 1_000
-        val token = SystemTokens.issue()
+        val token = BearerTokens.issue()
         sessions.delete(query<SessionRecord>().le("expires_at", now))
-        sessions.insert(SessionRecord(SystemTokens.digest(token), user.id, expiresAt))
+        sessions.insert(SessionRecord(BearerTokens.digest(token), user.id, expiresAt))
         loginAudit.insert(LoginAuditRecord(newId(), user.id, user.username, 1, address, now))
         return LoginResponse(token, "Bearer", expiresAt)
     }
@@ -110,7 +112,7 @@ class SystemAdministratorBootstrap(
         require(acceptableNewPassword(password)) { "首次管理员密码长度无效" }
 
         val id = newId()
-        users.insert(UserRecord(id, normalized, "系统管理员", passwords.encode(password)))
+        users.insert(UserRecord(id, normalized, "系统管理员", passwords.hashPassword(password)))
         relations.insertUserRole(id, ADMIN_ROLE_ID)
     }
 }

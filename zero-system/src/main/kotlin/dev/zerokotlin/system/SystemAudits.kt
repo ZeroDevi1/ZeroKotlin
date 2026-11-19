@@ -2,6 +2,7 @@ package dev.zerokotlin.system
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page
 import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

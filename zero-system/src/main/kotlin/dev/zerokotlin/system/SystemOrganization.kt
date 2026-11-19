@@ -2,6 +2,7 @@ package dev.zerokotlin.system
 
 import dev.zerokotlin.core.ModuleMigration
 import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize

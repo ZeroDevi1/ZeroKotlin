@@ -2,6 +2,8 @@ package dev.zerokotlin.system
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper
 import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
+import dev.zerokotlin.core.security.hashPassword
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -87,7 +89,7 @@ class SystemUsers(
     fun create(request: CreateUserRequest): CreatedResource {
         val username = normalizeUsername(request.username) ?: invalid("用户名格式无效")
         val displayName = checkedText(request.displayName, "displayName")
-        val passwordHash = passwords.encode(checkedPassword(request.password))
+        val passwordHash = passwords.hashPassword(checkedPassword(request.password))
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
         if (users.selectCount(query<UserRecord>().eq("username", username)) != 0L) conflict("用户名已存在")
         validateDepartment(request.departmentId)
@@ -114,7 +116,7 @@ class SystemUsers(
     @Transactional
     fun updateAccount(id: String, request: UserAccountRequest) {
         val enabled = request.enabled.requiredFlag()
-        val passwordHash = request.password?.let { passwords.encode(checkedPassword(it)) }
+        val passwordHash = request.password?.let { passwords.hashPassword(checkedPassword(it)) }
         val actor = writes.authorize(USER_MANAGE, administratorOnly = true)
         visibleUser(id, actor, USER_MANAGE)
         val user = users.selectById(id) ?: missing("用户")

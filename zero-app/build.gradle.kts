@@ -7,25 +7,25 @@ plugins {
     alias(libs.plugins.graal.native)
 }
 
-val enabledExtensions = mapOf(
-    "withExample" to ":modules:example",
-    "withSearch" to ":zero-search-elasticsearch",
-    "withKafka" to ":zero-messaging-kafka",
-).filterKeys { flag ->
+fun enabled(flag: String): Boolean =
     providers.gradleProperty(flag).map { it.toBooleanStrict() }.getOrElse(false)
-}
 
 dependencies {
     implementation(project(":zero-core"))
     implementation(project(":zero-system"))
-    implementation(project(":zero-data-mybatis"))
-    implementation(project(":zero-cache"))
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("tools.jackson.module:jackson-module-kotlin")
-    implementation(kotlin("reflect"))
-    implementation(libs.springdoc.ui)
-    enabledExtensions.values.forEach { implementation(project(it)) }
+    if (enabled("withExample")) {
+        runtimeOnly(project(":modules:example"))
+    }
+    if (enabled("withSearch")) {
+        runtimeOnly(project(":zero-core")) {
+            capabilities { requireCapability("dev.zerokotlin:zero-core-elasticsearch") }
+        }
+    }
+    if (enabled("withKafka")) {
+        runtimeOnly(project(":zero-core")) {
+            capabilities { requireCapability("dev.zerokotlin:zero-core-kafka") }
+        }
+    }
 }
 
 tasks.withType<ProcessAot>().configureEach {

@@ -1,5 +1,6 @@
 package dev.zerokotlin.system
 
+import dev.zerokotlin.core.PageWindow
 import org.springframework.aot.hint.MemberCategory.ACCESS_DECLARED_FIELDS
 import org.springframework.aot.hint.MemberCategory.INVOKE_DECLARED_CONSTRUCTORS
 import org.springframework.aot.hint.MemberCategory.INVOKE_PUBLIC_METHODS

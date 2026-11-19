@@ -1,6 +1,7 @@
 package dev.zerokotlin.system
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper
+import dev.zerokotlin.core.PageWindow
 import org.apache.ibatis.annotations.Delete
 import org.apache.ibatis.annotations.Insert
 import org.apache.ibatis.annotations.Mapper

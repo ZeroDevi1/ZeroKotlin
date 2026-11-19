@@ -12,12 +12,12 @@
 
 生成路径为 `zero-app/build/native/nativeCompile/zero-kotlin`，Windows 可执行文件带 `.exe`。仅需生成 Spring AOT 元数据时，可执行 `./gradlew :zero-app:processAot`。
 
-Gradle 为 `processAot` 指定 SQLite 和 Caffeine。处理器在构建时准备 Bean 定义和 Native Image 元数据，数据库连接、Flyway 迁移和首次管理员初始化属于应用运行期。默认构建将三个可选模块排除在原生 Bean 集合之外。
+Gradle 为 `processAot` 指定 SQLite 和 Caffeine。处理器在构建时准备 Bean 定义和 Native Image 元数据，数据库连接、Flyway 迁移和首次管理员初始化属于应用运行期。默认构建只装配 `zero-core` 主变体和 `zero-system`。
 
 ## 元数据
 
 - MyBatis-Plus Boot 4 starter 提供 Native Image 与 Spring AOT 集成。构建期扫描 `@Mapper` Bean，并为 MyBatis 代理以及从 Mapper 方法签名可达的模型生成反射信息。
-- 应用额外登记 `mapper/**` 与 Flyway 的 `db/migration/common/**` 和 `db/migration/sqlite/**` 资源，保留运行期读取的 SQL 和 XML。XML 若引用无法从 Mapper 签名推导的类，应为这些类补充反射提示。
+- `zero-core` 登记默认配置、`mapper/**` 和 Flyway 迁移资源，保留运行期读取的配置、SQL 和 XML。`zero-system` 为系统 Mapper 的实体和查询对象登记反射提示。XML 若引用无法从 Mapper 签名推导的类，应为这些类补充反射提示。
 - SQLite JDBC 使用驱动自带的 GraalVM Feature。Spring Boot Flyway 自动配置提供原生镜像中的迁移资源解析。
 - Native Build Tools 默认使用 GraalVM 元数据仓库，其中包含 Caffeine 的动态缓存实现元数据。
 

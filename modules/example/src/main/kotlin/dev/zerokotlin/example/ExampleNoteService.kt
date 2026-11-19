@@ -3,6 +3,7 @@ package dev.zerokotlin.example
 import dev.zerokotlin.core.CurrentActor
 import dev.zerokotlin.core.OperationAudit
 import dev.zerokotlin.core.PageResult
+import dev.zerokotlin.core.PageWindow
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
@@ -24,12 +25,10 @@ class ExampleNoteService(
 ) {
     @PreAuthorize("hasAuthority('$READ_NOTES')")
     fun list(page: Int, size: Int): PageResult<ExampleNoteView> {
-        if (page < 1 || size !in 1..100) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page 必须大于等于 1，size 必须介于 1 和 100 之间")
-        }
+        val window = PageWindow(page, size)
         val order = Sort.by(Sort.Direction.DESC, "createdAt", "id")
         val result = notes.findAllByOwnerId(currentActor.requireUserId(), PageRequest.of(page - 1, size, order))
-        return PageResult(result.content.map(ExampleNote::toView), result.totalElements, page, size)
+        return window.result(result.content.map(ExampleNote::toView), result.totalElements)
     }
 
     @PreAuthorize("hasAuthority('$READ_NOTES')")

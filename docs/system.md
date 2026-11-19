@@ -1,6 +1,6 @@
 # 系统模块
 
-`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。它通过 `zero-data-mybatis` 使用应用选定的 DataSource。Flyway 从 `classpath:db/migration/common` 执行 `V1__system.sql`。MyBatis-Plus 扫描 `classpath*:/mapper/**/*.xml`，实体按驼峰属性映射下划线列名。
+`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。它复用 `zero-core` 的数据源、MyBatis-Plus 和 Bearer 过滤链，并通过 `BearerSessionAuthentication` 提供持久化会话查询和权限计算。Flyway 从 `classpath:db/migration/common` 执行 `V1__system.sql`。MyBatis-Plus 扫描 `classpath*:/mapper/**/*.xml`，实体按驼峰属性映射下划线列名。
 
 ## 首次启动
 
@@ -22,7 +22,7 @@
 {"username":"admin","password":"<首次启动配置的密码>"}
 ```
 
-登录成功返回 `accessToken`、`tokenType`（`Bearer`）和 `expiresAt`（Unix 毫秒）。将 `Authorization: Bearer <accessToken>` 加入后续请求。数据库保存 BCrypt 密码哈希和会话的 SHA-256 摘要。退出删除当前会话摘要。禁用账号或重置密码会注销该用户的所有会话。重新启用账号后需重新登录。角色、权限点、账号和令牌状态在每次请求认证时读取数据库，变更提交后下一次请求立即生效。
+登录成功返回 `accessToken`、`tokenType`（`Bearer`）和 `expiresAt`（Unix 毫秒）。将 `Authorization: Bearer <accessToken>` 加入后续请求。默认由 `zero-core` 提供工作因子为 12 的 BCrypt 编码器。账户创建、首次初始化和重置密码只写入非空哈希。数据库同时保存会话的 SHA-256 摘要。退出删除当前会话摘要。禁用账号或重置密码会注销该用户的所有会话。重新启用账号后需重新登录。角色、权限点、账号和令牌状态在每次请求认证时读取数据库，变更提交后下一次请求立即生效。
 
 | 方法和路径 | 结果 |
 | --- | --- |

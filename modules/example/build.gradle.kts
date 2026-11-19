@@ -5,8 +5,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":zero-core"))
-    implementation(project(":zero-data-jpa"))
-    implementation("org.springframework:spring-webmvc")
-    implementation("org.springframework.security:spring-security-core")
+    implementation(project(":zero-core")) {
+        capabilities { requireCapability("dev.zerokotlin:zero-core-jpa") }
+    }
 }

@@ -1,10 +1,10 @@
-# 可选模块
+# 可选能力与业务模块
 
-`zero-app` 默认只打包核心模块。以下 Gradle 属性可以组合使用，接受 `true` 或 `false`。
+`zero-app` 默认装配 `zero-core` 主变体和 `zero-system`。以下 Gradle 属性可以组合使用，接受 `true` 或 `false`。
 
 | 构建属性 | JVM 应用内容 | 运行开关 |
 | --- | --- | --- |
-| `-PwithExample=true` | JPA 笔记示例及其迁移 | 随包启用 |
+| `-PwithExample=true` | JPA 笔记示例、迁移及其所需的 JPA feature | 随包启用 |
 | `-PwithSearch=true` | Elasticsearch 客户端及示例接口 | `zero.search.enabled`，默认 `false` |
 | `-PwithKafka=true` | Kafka 客户端及示例接口 | `zero.kafka.enabled`，默认 `false` |
 
@@ -12,7 +12,7 @@
 ./gradlew :zero-app:bootJar -PwithExample=true -PwithSearch=true -PwithKafka=true
 ```
 
-搜索和消息模块各自控制客户端、接口和健康贡献器的装配。打包后的 JVM 应用关闭运行开关时，不会注册对应接口或探测中间件。未打包的模块无法通过运行配置启用。以下请求使用通过 [系统登录](system.md) 获取的 Bearer Token，示例假设 `TOKEN` 已设为当前访问令牌。
+Elasticsearch 和 Kafka feature 的运行开关同时控制客户端、接口和健康贡献器。`zero-system` 随对应 feature 启用而注册权限种子迁移。JVM 应用需要在打包时选择 feature，并在启动时打开对应的配置才能启用。以下请求使用通过系统登录获取的 Bearer Token，示例假设 `TOKEN` 已设为当前访问令牌。[系统登录](system.md)
 
 ## Elasticsearch
 
@@ -82,7 +82,7 @@ curl -X POST http://localhost:8080/api/extensions/kafka/consume \
 
 ## JPA 笔记示例
 
-`modules/example` 依赖 `zero-data-jpa`，与系统 MyBatis 模块共享同一个 DataSource。Flyway 迁移 `db/modules/example/V1__example.sql` 创建 `example_note`，注册权限和菜单。菜单路径为 `/example/notes`，菜单 ID 为 `example-notes`，进入菜单需要 `example:note:read`。
+`modules/example` 选择 `zero-core-jpa` feature，与系统的 MyBatis Mapper 共享同一个 DataSource。Flyway 迁移 `db/modules/example/V1__example.sql` 创建 `example_note`，注册权限和菜单。菜单路径为 `/example/notes`，菜单 ID 为 `example-notes`，进入菜单需要 `example:note:read`。
 
 | 接口 | 权限 | 结果 |
 | --- | --- | --- |
@@ -105,8 +105,25 @@ curl http://localhost:8080/api/example/notes -H "Authorization: Bearer $TOKEN"
 ## 添加或移除自己的模块
 
 1. 在 `settings.gradle.kts` 包含新子项目，并在启动模块增加该项目的依赖或构建开关。
-2. 在子项目中依赖 `zero-core` 和所需的数据模块，在 `dev.zerokotlin` 下定义控制器、服务和 Mapper 或 JPA Repository。
+2. 在子项目中依赖 `zero-core`，在 `dev.zerokotlin` 下定义控制器、服务和 Mapper。使用 JPA 的模块声明 `zero-core-jpa` feature。[JPA 依赖配置](data.md#mybatis-plus-与可选-jpa)
 3. 声明一个 `ModuleMigration("orders")` Bean，在 `src/main/resources/db/modules/orders/V1__orders.sql` 放置业务表和权限种子。需要菜单时将 `sys_menu.module_name` 设为 `orders`。每个模块独立编号。
 4. 在服务方法上使用 `@PreAuthorize` 执行权限检查。通过 `CurrentActor` 获取用户 ID，并在写事务中调用 `OperationAudit.record(permission, targetId)` 记录业务操作。
 
+需要直接调用 Elasticsearch 或 Kafka 的业务模块可以在自己的 `build.gradle.kts` 中声明对应的 feature。下例同时选择两项，可按实际用途保留所需依赖。
+
+```kotlin
+dependencies {
+    implementation(project(":zero-core")) {
+        capabilities { requireCapability("dev.zerokotlin:zero-core-elasticsearch") }
+    }
+    implementation(project(":zero-core")) {
+        capabilities { requireCapability("dev.zerokotlin:zero-core-kafka") }
+    }
+}
+```
+
+装配业务模块时，这些 feature 随依赖进入应用包。注入 `ElasticsearchDocuments` 或 `KafkaMessages` 的组件应使用对应的 `zero.search.enabled` 或 `zero.kafka.enabled` 条件，以便在关闭中间件时启动。Gradle 会同时引入 `zero-core` 主变体。[Gradle feature 变体](https://docs.gradle.org/current/userguide/how_to_create_feature_variants_of_a_library.html)
+
 省略 `-PwithExample=true` 后重新打包，可在原数据库上运行核心应用。菜单会从用户导航中隐藏，笔记数据和独立历史表 `zero_history_example` 保留。重新启用模块时会继续执行尚未应用的迁移。
+
+如需从源码树移除示例，移除 `settings.gradle.kts` 中的 `modules:example` 和 `zero-app/build.gradle.kts` 中对应的依赖分支，再删除 `modules/example`。

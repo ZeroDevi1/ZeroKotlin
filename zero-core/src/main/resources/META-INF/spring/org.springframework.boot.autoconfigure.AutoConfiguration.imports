@@ -1,0 +1,6 @@
+dev.zerokotlin.cache.ZeroCacheAutoConfiguration
+dev.zerokotlin.data.mybatis.DatabaseAutoConfiguration
+dev.zerokotlin.core.nativeimage.ZeroNativeConfiguration
+dev.zerokotlin.core.security.BearerSecurityAutoConfiguration
+dev.zerokotlin.core.security.PasswordHashingAutoConfiguration
+dev.zerokotlin.core.web.OpenApiConfiguration

@@ -1,2 +1,0 @@
-org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitializationDetector=\
-dev.zerokotlin.data.mybatis.MybatisDatabaseInitializationDetector
