@@ -24,6 +24,21 @@ curl -i "$base_url/api/hello" -H 'Content-Type: application/json' -d '{"name":"L
 
 健康检查应返回项目名和 `"status":"UP"`。问候接口应返回 `{"message":"你好，Lin"}`。运行服务的终端可以用 `Ctrl+C` 停止服务。
 
+## 启动和修改 Vue 前端
+
+1. 保持 Ktor 服务运行。另开终端，使用 Node.js 22.12 或更高版本，在 `web/` 目录执行 `pnpm install --frozen-lockfile`。pnpm 版本见 [package.json](../web/package.json)。
+2. 执行 `pnpm dev`。打开项目 [README](../README.md) 对应的前端地址，默认端口 `5173`。如果 Vite 使用了其他端口，以终端地址为准。
+3. 页面加载时请求健康检查。输入姓名并提交后，页面展示 Ktor 返回的问候语。后端返回错误时，页面显示错误消息。
+
+| 前端文件 | 职责 |
+| --- | --- |
+| [App.vue](../web/src/App.vue) | 页面组件，管理表单、加载状态和响应提示 |
+| [api.ts](../web/src/api.ts) | 集中管理 HTTP 请求和 JSON 类型。添加接口时在这里添加对应函数 |
+| [vite.config.ts](../web/vite.config.ts) | 配置页面路径前缀和本地 API 代理 |
+| [style.css](../web/src/style.css) | 页面排版、颜色和响应式样式 |
+
+Vite 用 `base` 决定页面和静态资源的前缀，客户端请求从 `import.meta.env.BASE_URL` 读取同一个值。例如 `/apps/orders/` 下的页面会请求 `/apps/orders/health` 和 `/apps/orders/api/hello`，开发服务器保留路径转发到 Ktor。修改前缀时，同时更新 `app.contextPath` 和 Vite 的 `contextPath`。后端改用其他端口时，为 Vite 设置 `ZERO_WEB_API_TARGET`，例如 `http://127.0.0.1:8081`。 [Vite 代理配置](https://v7.vite.dev/config/server-options.html#server-proxy) · [Vite 环境变量](https://v7.vite.dev/guide/env-and-mode.html#built-in-constants)
+
 ## 从哪里读代码
 
 | 文件 | 职责 |
@@ -89,8 +104,13 @@ curl -i "$base_url/api/hello" -H 'Content-Type: application/json' -d '{"name":"L
 2. 用 JDK 25 运行 `build/install/<项目名>/bin/` 下的同名脚本。Windows 选用 `.bat`。部署环境可设置 `ZERO_HOST` 和 `ZERO_PORT`。
 3. 通过部署地址请求带访问前缀的 `/health`，确认服务可达。
 
+前端在 `web/` 执行 `pnpm build`，静态文件输出到 `web/dist/`。在同一站点挂载前端文件，并把前缀下的 `/health` 和 `/api/` 请求原样转发给 Ktor。例如在 `/apps/orders/` 部署页面，把 `/apps/orders/health` 和 `/apps/orders/api/` 交给后端。 [Vite 静态部署指南](https://v7.vite.dev/guide/static-deploy)
+
 ### 常见问题
 
 - **Gradle 提示找不到 Java 25**。检查 `JAVA_HOME`、`java -version` 和 IntelliJ 的 Gradle JVM。
 - **提示端口已被占用**。PowerShell 中用 `$env:ZERO_PORT = '8081'` 后重新运行。macOS 和 Linux 使用 `ZERO_PORT=8081 ./gradlew run`。
+- **页面显示后端不可用**。先直接访问后端健康检查确认 Ktor 可达，再检查 `ZERO_WEB_API_TARGET` 和两个服务的访问前缀。
 - **启动了但请求返回 404**。核对 `app.contextPath` 和请求地址。前缀为 `/apps/orders` 时，健康检查地址的路径是 `/apps/orders/health`。
+
+需要把新版模板合入业务项目时，参考[模板升级指南](template-upgrades.md)。

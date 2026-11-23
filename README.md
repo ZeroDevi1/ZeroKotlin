@@ -1,6 +1,6 @@
 # ZeroKotlin · Ktor
 
-`ktor` 分支面向独立 API 和小型服务。初始化生成一个 Ktor + Netty 工程，包含 JSON 接口、健康检查、统一错误响应和中文开发指南。[Ktor 模板说明](ktor-template/README.md) · [Ktor 开发指南](ktor-template/docs/development.md)
+`ktor` 分支面向小型全栈项目。初始化生成 Ktor + Netty 后端和 Vue 3 + TypeScript 前端，包含健康检查、JSON 示例、统一错误响应和中文开发指南。[Ktor 模板说明](ktor-template/README.md) · [开发指南](ktor-template/docs/development.md) · [合并模板更新](ktor-template/docs/template-upgrades.md)
 
 ## 初始化 Ktor 项目
 
@@ -10,7 +10,7 @@
 node "<Ktor 工作树>/scripts/zerokotlin.mjs" init --name order-service --context-url /apps/orders
 ```
 
-`--name` 和 `--context-url` 均为必填项。示例会创建 `order-service/`，并把 `/apps/orders` 写入该项目的 `app.contextPath`。可以传入 `/` 或完整 HTTP(S) URL，完整 URL 使用其路径。已存在的同名目录会使初始化退出。
+`--name` 和 `--context-url` 均为必填项。示例会创建 `order-service/`，并把 `/apps/orders` 同步写入 Ktor 和 Vite 配置。可以传入 `/` 或完整 HTTP(S) URL，完整 URL 使用其路径。已存在的同名目录会使初始化退出。
 
 远端提供 `ktor` 分支后，安装 Git 即可通过 `npx` 获取模板。需要固定版本时，将 `#ktor` 换成标签或提交 SHA。
 
@@ -18,9 +18,9 @@ node "<Ktor 工作树>/scripts/zerokotlin.mjs" init --name order-service --conte
 npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context-url /apps/orders
 ```
 
-进入新项目，使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。上面的项目启动后，健康检查位于 `http://127.0.0.1:8080/apps/orders/health`。
+进入新项目，使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。另开终端进入项目的 `web/`，执行 `pnpm install --frozen-lockfile` 和 `pnpm dev`。示例的默认前端入口是 `http://127.0.0.1:5173/apps/orders/`，页面可检查后端并发送问候请求。
 
-在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。[配置和请求示例](ktor-template/docs/development.md)
+在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。前端命令在 `ktor-template/web/` 执行。模板工作树的默认访问前缀为 `/`。[配置和请求示例](ktor-template/docs/development.md)
 
 ## Spring Boot 参考工程
 

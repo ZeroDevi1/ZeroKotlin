@@ -52,9 +52,12 @@ function updateProject(destination, name, contextPath) {
     ['name = "ZeroKotlin"', `name = "${name}"`],
     ['contextPath = "/"', `contextPath = "${contextPath || '/'}"`],
   ])
+  replaceSettings('web/vite.config.ts', [["const contextPath = ''", `const contextPath = '${contextPath}'`]])
+  replaceSettings('web/index.html', [['<title>ZeroKotlin</title>', `<title>${name}</title>`]])
   edit('README.md', (content) => content
     .replace('# ZeroKotlin', `# ${name}`)
-    .replaceAll('http://127.0.0.1:8080/', `http://127.0.0.1:8080${contextPath}/`))
+    .replaceAll('http://127.0.0.1:8080/', `http://127.0.0.1:8080${contextPath}/`)
+    .replaceAll('http://127.0.0.1:5173/', `http://127.0.0.1:5173${contextPath}/`))
 }
 
 function initProject(name, contextPath) {

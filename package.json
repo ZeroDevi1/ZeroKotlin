@@ -21,6 +21,13 @@
     "ktor-template/build.gradle.kts",
     "ktor-template/settings.gradle.kts",
     "ktor-template/docs",
-    "ktor-template/src"
+    "ktor-template/src",
+    "ktor-template/web/index.html",
+    "ktor-template/web/package.json",
+    "ktor-template/web/pnpm-lock.yaml",
+    "ktor-template/web/pnpm-workspace.yaml",
+    "ktor-template/web/src",
+    "ktor-template/web/tsconfig.json",
+    "ktor-template/web/vite.config.ts"
   ]
 }

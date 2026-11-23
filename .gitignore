@@ -3,6 +3,9 @@
 .kotlin/
 **/build/
 out/
+node_modules/
+dist/
+*.tsbuildinfo
 *.iml
 .DS_Store
 .env
