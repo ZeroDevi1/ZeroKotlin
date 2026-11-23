@@ -45,6 +45,7 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j")
 
     implementation("com.github.ben-manes.caffeine:caffeine")
+    implementation(libs.hutool.all)
     implementation(libs.jsoup)
     implementation(libs.ip2region)
     implementation("org.springframework.data:spring-data-redis")

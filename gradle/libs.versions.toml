@@ -9,6 +9,7 @@ agentscope = "2.0.4"
 minio = "9.0.3"
 aliyun-oss = "3.18.5"
 apache-poi = "6.0.0"
+hutool = "5.8.48"
 jsoup = "1.24.1"
 ip2region = "3.3.7"
 
@@ -23,6 +24,7 @@ agentscope-openai-spring-boot-starter = { module = "io.agentscope:agentscope-ope
 minio = { module = "io.minio:minio", version.ref = "minio" }
 aliyun-oss = { module = "com.aliyun.oss:aliyun-sdk-oss", version.ref = "aliyun-oss" }
 apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }
+hutool-all = { module = "cn.hutool:hutool-all", version.ref = "hutool" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 ip2region = { module = "org.lionsoul:ip2region", version.ref = "ip2region" }
 
