@@ -2,6 +2,20 @@
 
 ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化脚手架，配套 Vue 3 + TypeScript 管理端。它提供组织与岗位管理、角色与数据权限、字典、审计、公告发布和个人收件箱。默认使用 SQLite 文件和 Caffeine 本地缓存，可按需接入 PostgreSQL、MySQL、Redis、Elasticsearch 和 Kafka。
 
+## 初始化项目
+
+准备 Node.js 22.12 或更高版本和 Git。在准备存放新项目的父目录直接运行以下命令，`npx` 会从 GitHub 获取并运行 CLI。
+
+```sh
+npx --yes "github:ZeroDevi1/ZeroKotlin#main" init --name order-console --context-url /apps/orders
+```
+
+该命令在当前目录创建 `order-console/`，将模板代码写入其中，并将 Gradle 根项目、Spring 应用和管理端命名为 `order-console`。本地前端入口是 `http://localhost:5173/apps/orders/`，登录接口是 `http://localhost:8080/apps/orders/api/auth/login`。已存在的同名目录会使初始化退出。
+
+- `--name` 和 `--context-url` 均为必填项。`--name` 指定项目名和目录名，`--context-url` 指定访问前缀。
+- `--context-url` 支持根路径 `/` 和完整 URL，例如 `https://example.com/apps/orders/`。初始化使用 URL 中的路径并保留大小写。路径每段以字母或数字开头，可包含连字符和下划线。
+- 从本地模板源码生成项目时，在目标父目录运行 `node "<仓库路径>/scripts/zerokotlin.mjs" init --name order-console --context-url /apps/orders`。远程入口可将 `#main` 替换为提交 SHA 或标签，固定模板版本。
+
 ## 首次启动
 
 项目使用 JDK 25。已使用 vfox 的开发者可在仓库根目录安装并选定项目版本。首次使用 Java 插件时先执行 `vfox add java`。
@@ -44,7 +58,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-打开终端显示的地址（默认 [localhost:5173](http://localhost:5173)），使用后端初始化的账号登录。开发服务器将 `/api` 转发至 `http://127.0.0.1:8080`，可通过 `ZERO_WEB_API_TARGET` 调整。生产部署说明见[管理端文档](zero-web/README.md)。
+打开终端显示的地址（默认 [localhost:5173](http://localhost:5173)），使用后端初始化的账号登录。开发服务器将访问前缀下的 `/api` 请求转发至 `http://127.0.0.1:8080`，可通过 `ZERO_WEB_API_TARGET` 调整后端地址。生产部署说明见[管理端文档](zero-web/README.md)。
 
 ## 工程
 

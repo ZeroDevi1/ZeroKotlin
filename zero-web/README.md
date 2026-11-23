@@ -13,7 +13,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Vite 将同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其他地址时，通过 Vite 进程的 `ZERO_WEB_API_TARGET` 指定完整的 HTTP(S) 地址。Bearer 凭据来自登录响应，存于当前标签页的 `sessionStorage`。
+Vite 将访问前缀下的同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其他地址时，通过 Vite 进程的 `ZERO_WEB_API_TARGET` 指定后端的 HTTP(S) 源站地址。Bearer 凭据来自登录响应，按访问前缀存于当前标签页的 `sessionStorage`。
 
 ## 菜单与权限
 
@@ -43,4 +43,6 @@ Vite 将同源 `/api` 请求转发到 `http://127.0.0.1:8080`。后端使用其�
 
 ## 部署
 
-`pnpm build` 生成 `dist/`。生产环境从同一 HTTPS 站点提供静态资源并转发 `/api` 至后端。页面路径及刷新请求回退到 `index.html`，`/api` 响应保持由后端处理。
+`pnpm build` 生成 `dist/`。在同一 HTTPS 站点上，将静态资源挂载到 Vite 的 `base`，把该前缀下的 `/api` 请求原样转发到后端。实时消息的 `/api/realtime/ws` 需要保留 WebSocket 升级。页面路径及刷新请求回退到该前缀下的 `index.html`。
+
+Vite 的 `contextPath` 与后端 `server.servlet.context-path` 使用同一值。例如 `/apps/orders` 对应 `/apps/orders/` 的页面入口和 `/apps/orders/api/` 的接口前缀。

@@ -39,13 +39,21 @@ function problemText(payload: unknown): string | undefined {
   }
 }
 
-async function send(path: string, options: RequestOptions, accept: string): Promise<Response> {
+const contextPath = import.meta.env.BASE_URL.slice(0, -1)
+
+/** 解析应用内的同源 API 地址，HTTP 和 WebSocket 共用访问前缀。 */
+export function apiUrl(path: string): URL {
   const url = new URL(path, window.location.origin)
   if (!path.startsWith('/api/') || url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
     throw new Error('API 路径必须位于同源的 /api/ 下。')
   }
+  url.pathname = `${contextPath}${url.pathname}`
+  return url
+}
 
-  const publicAuth = url.pathname === '/api/auth/login' || url.pathname === '/api/auth/captcha'
+async function send(path: string, options: RequestOptions, accept: string): Promise<Response> {
+  const url = apiUrl(path)
+  const publicAuth = url.pathname === `${contextPath}/api/auth/login` || url.pathname === `${contextPath}/api/auth/captcha`
   const token = publicAuth ? undefined : accessToken
   const headers = new Headers({ Accept: accept })
   if (token) headers.set('Authorization', `Bearer ${token}`)

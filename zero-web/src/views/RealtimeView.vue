@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Client } from '@stomp/stompjs'
 import { computed, ref, watch } from 'vue'
-import { ApiError, request } from '@/api/client'
+import { ApiError, apiUrl, request } from '@/api/client'
 import SseDemo from '@/components/SseDemo.vue'
 import { errorMessage, formatTime } from '@/hooks/useResourcePage'
 import { sessionAuthorization, useAuth } from '@/store/auth'
@@ -63,13 +63,13 @@ watch([() => auth.user?.id, canRead, retry], ([userId, allowed], previous, onCle
   if (!userId || !allowed) return
 
   connection.value = 'connecting'
-  const { protocol, host } = window.location
-  const brokerURL = `${protocol === 'https:' ? 'wss:' : 'ws:'}//${host}${api}/ws`
+  const brokerUrl = apiUrl(`${api}/ws`)
+  brokerUrl.protocol = brokerUrl.protocol === 'https:' ? 'wss:' : 'ws:'
   const controller = new AbortController()
   const { signal } = controller
   let loadingOnline = false
   const client = new Client({
-    brokerURL,
+    brokerURL: brokerUrl.href,
     reconnectDelay: 5000,
     connectionTimeout: 10_000,
     heartbeatIncoming: 15_000,

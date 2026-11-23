@@ -22,7 +22,8 @@ export interface LoginCaptcha {
   expiresAt: number
 }
 
-const storageKey = 'zerokotlin.session'
+const baseUrl = import.meta.env.BASE_URL
+const storageKey = baseUrl === '/' ? 'zerokotlin.session' : `zerokotlin.session:${baseUrl}`
 
 function loadToken(): SessionToken | undefined {
   try {

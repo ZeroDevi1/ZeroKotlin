@@ -1,0 +1,46 @@
+{
+  "name": "zerokotlin",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "zerokotlin": "scripts/zerokotlin.mjs"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "files": [
+    ".gitattributes",
+    ".gitignore",
+    ".vfox.toml",
+    "README.md",
+    "build.gradle.kts",
+    "docs",
+    "gradle",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "settings.gradle.kts",
+    "zero-agent/README.md",
+    "zero-agent/build.gradle.kts",
+    "zero-agent/src",
+    "zero-codegen/build.gradle.kts",
+    "zero-codegen/src",
+    "zero-core/build.gradle.kts",
+    "zero-core/resources",
+    "zero-core/src",
+    "zero-core/test",
+    "zero-system/build.gradle.kts",
+    "zero-system/resources",
+    "zero-system/src",
+    "zero-system/test",
+    "zero-web/.gitignore",
+    "zero-web/README.md",
+    "zero-web/index.html",
+    "zero-web/package.json",
+    "zero-web/pnpm-lock.yaml",
+    "zero-web/pnpm-workspace.yaml",
+    "zero-web/src",
+    "zero-web/tsconfig.json",
+    "zero-web/vite.config.ts"
+  ]
+}
