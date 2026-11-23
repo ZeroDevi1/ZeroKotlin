@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 const templateRoot = fileURLToPath(new URL('../', import.meta.url))
+const templateDirectory = 'ktor-template/'
 const usage = `用法：zerokotlin init --name <项目名> --context-url <路径或 HTTP(S) URL>
 
   --name         必填。用作项目名和新建目录名
@@ -47,32 +48,13 @@ function updateProject(destination, name, contextPath) {
   }
 
   replaceSettings('settings.gradle.kts', [['rootProject.name = "ZeroKotlin"', `rootProject.name = "${name}"`]])
-  replaceSettings('zero-system/resources/application.yaml', [
-    ['    name: ZeroKotlin', `    name: "${name}"`],
-    ["    context-path: ''", `    context-path: '${contextPath}'`],
+  replaceSettings('src/main/resources/application.conf', [
+    ['name = "ZeroKotlin"', `name = "${name}"`],
+    ['contextPath = "/"', `contextPath = "${contextPath || '/'}"`],
   ])
-  replaceSettings('zero-web/vite.config.ts', [["const contextPath = ''", `const contextPath = '${contextPath}'`]])
-  for (const file of [
-    'zero-core/src/dev/zerokotlin/core/config/OpenApiConfiguration.kt',
-    'zero-web/index.html',
-    'zero-web/src/components/BrandMark.vue',
-    'zero-web/src/router/index.ts',
-    'zero-web/README.md',
-  ]) {
-    edit(file, (content) => content.replaceAll('ZeroKotlin', name))
-  }
-
-  const webUrl = `http://localhost:5173${contextPath}/`
-  const backendUrl = `http://localhost:8080${contextPath}/`
   edit('README.md', (content) => content
-    .replaceAll('ZeroKotlin', name)
-    .replace(/^## 初始化项目\r?\n[\s\S]*?(?=^## 首次启动)/m, `项目由 ZeroKotlin 模板生成，访问前缀为 \`${contextPath || '/'}\`。\n\n`)
-    .replace('[localhost:5173](http://localhost:5173)', `[${webUrl}](${webUrl})`)
-    .replaceAll('http://localhost:8080/', backendUrl))
-  for (const file of readdirSync(join(destination, 'docs'), { withFileTypes: true })) {
-    if (!file.isFile() || !file.name.endsWith('.md')) continue
-    edit(join('docs', file.name), (content) => content.replaceAll('http://localhost:8080/', backendUrl))
-  }
+    .replace('# ZeroKotlin', `# ${name}`)
+    .replaceAll('http://127.0.0.1:8080/', `http://127.0.0.1:8080${contextPath}/`))
 }
 
 function initProject(name, contextPath) {
@@ -92,7 +74,8 @@ function initProject(name, contextPath) {
       const templateFile = basename(file) === '.gitignore' && !existsSync(source)
         ? join(dirname(source), '.npmignore')
         : source
-      cpSync(templateFile, join(destination, file), {
+      const relativePath = file.startsWith(templateDirectory) ? file.slice(templateDirectory.length) : file
+      cpSync(templateFile, join(destination, relativePath), {
         recursive: true,
         force: false,
         errorOnExist: true,

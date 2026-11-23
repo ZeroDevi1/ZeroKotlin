@@ -1,20 +1,30 @@
-# ZeroKotlin
+# ZeroKotlin · Ktor
 
-ZeroKotlin 是基于 Kotlin 与 Spring Boot 的模块化脚手架，配套 Vue 3 + TypeScript 管理端。它提供组织与岗位管理、角色与数据权限、字典、审计、公告发布和个人收件箱。默认使用 SQLite 文件和 Caffeine 本地缓存，可按需接入 PostgreSQL、MySQL、Redis、Elasticsearch 和 Kafka。
+`ktor` 分支面向独立 API 和小型服务。初始化生成一个 Ktor + Netty 工程，包含 JSON 接口、健康检查、统一错误响应和中文开发指南。[Ktor 模板说明](ktor-template/README.md) · [Ktor 开发指南](ktor-template/docs/development.md)
 
-## 初始化项目
+## 初始化 Ktor 项目
 
-准备 Node.js 22.12 或更高版本和 Git。在准备存放新项目的父目录直接运行以下命令，`npx` 会从 GitHub 获取并运行 CLI。
+准备 Node.js 22.12 或更高版本。从本地工作树初始化时，在新项目的父目录执行：
 
 ```sh
-npx --yes "github:ZeroDevi1/ZeroKotlin#main" init --name order-console --context-url /apps/orders
+node "<Ktor 工作树>/scripts/zerokotlin.mjs" init --name order-service --context-url /apps/orders
 ```
 
-该命令在当前目录创建 `order-console/`，将模板代码写入其中，并将 Gradle 根项目、Spring 应用和管理端命名为 `order-console`。本地前端入口是 `http://localhost:5173/apps/orders/`，登录接口是 `http://localhost:8080/apps/orders/api/auth/login`。已存在的同名目录会使初始化退出。
+`--name` 和 `--context-url` 均为必填项。示例会创建 `order-service/`，并把 `/apps/orders` 写入该项目的 `app.contextPath`。可以传入 `/` 或完整 HTTP(S) URL，完整 URL 使用其路径。已存在的同名目录会使初始化退出。
 
-- `--name` 和 `--context-url` 均为必填项。`--name` 指定项目名和目录名，`--context-url` 指定访问前缀。
-- `--context-url` 支持根路径 `/` 和完整 URL，例如 `https://example.com/apps/orders/`。初始化使用 URL 中的路径并保留大小写。路径每段以字母或数字开头，可包含连字符和下划线。
-- 从本地模板源码生成项目时，在目标父目录运行 `node "<仓库路径>/scripts/zerokotlin.mjs" init --name order-console --context-url /apps/orders`。远程入口可将 `#main` 替换为提交 SHA 或标签，固定模板版本。
+远端提供 `ktor` 分支后，安装 Git 即可通过 `npx` 获取模板。需要固定版本时，将 `#ktor` 换成标签或提交 SHA。
+
+```sh
+npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context-url /apps/orders
+```
+
+进入新项目，使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。上面的项目启动后，健康检查位于 `http://127.0.0.1:8080/apps/orders/health`。
+
+在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。[配置和请求示例](ktor-template/docs/development.md)
+
+## Spring Boot 参考工程
+
+原有模块采用 Kotlin 与 Spring Boot，配套 Vue 3 + TypeScript 管理端，提供组织与岗位管理、角色与数据权限、字典、审计、公告和收件箱。下方的 `zero-system` 和 `zero-web` 启动说明适用于 Spring Boot 工程。
 
 ## 首次启动
 
