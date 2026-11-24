@@ -1,6 +1,6 @@
 # ZeroKotlin · Ktor
 
-`ktor` 分支面向小型全栈项目。初始化生成 Ktor + Netty 后端和 Vue 3 + TypeScript 前端，包含健康检查、JSON 示例、统一错误响应和中文开发指南。[Ktor 模板说明](ktor-template/README.md) · [开发指南](ktor-template/docs/development.md) · [合并模板更新](ktor-template/docs/template-upgrades.md)
+`ktor` 分支面向小型全栈项目。初始化生成 Ktor + Netty 后端和原 Vue 3 管理工作台。Ktor 后端接管系统管理、个人中心、文件、实时消息、任务、Excel 和审计等 API，复用系统数据库迁移。Spring Boot 模块留做对照，不是运行 Ktor 的依赖。[Ktor 模板说明](ktor-template/README.md) · [开发指南](ktor-template/docs/development.md) · [合并模板更新](ktor-template/docs/template-upgrades.md)
 
 ## 初始化 Ktor 项目
 
@@ -12,21 +12,21 @@ node "<Ktor 工作树>/scripts/zerokotlin.mjs" init --name order-service --conte
 
 `--name` 和 `--context-url` 均为必填项。示例会创建 `order-service/`，并把 `/apps/orders` 同步写入 Ktor 和 Vite 配置。可以传入 `/` 或完整 HTTP(S) URL，完整 URL 使用其路径。已存在的同名目录会使初始化退出。
 
-远端提供 `ktor` 分支后，安装 Git 即可通过 `npx` 获取模板。需要固定版本时，将 `#ktor` 换成标签或提交 SHA。
+安装 Git 后可通过 `npx` 获取模板。需要固定版本时，将 `#ktor` 换成标签或提交 SHA。
 
 ```sh
 npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context-url /apps/orders
 ```
 
-进入新项目，使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。另开终端进入项目的 `web/`，执行 `pnpm install --frozen-lockfile` 和 `pnpm dev`。示例的默认前端入口是 `http://127.0.0.1:5173/apps/orders/`，页面可检查后端并发送问候请求。
+进入新项目。使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。另开终端进入项目的 `web/`，执行 `pnpm install --frozen-lockfile` 和 `pnpm dev`。示例的默认前端入口是 `http://127.0.0.1:5173/apps/orders/`，新库使用默认账号 `admin / admin` 登录，请先改密，不对公网开放。
 
-在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。前端命令在 `ktor-template/web/` 执行。模板工作树的默认访问前缀为 `/`。[配置和请求示例](ktor-template/docs/development.md)
+在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。前端命令在仓库根目录的 `zero-web/` 执行。模板工作树的默认访问前缀为 `/`。[配置和请求示例](ktor-template/docs/development.md)
 
 ## Spring Boot 参考工程
 
 原有模块采用 Kotlin 与 Spring Boot，配套 Vue 3 + TypeScript 管理端，提供组织与岗位管理、角色与数据权限、字典、审计、公告和收件箱。下方的 `zero-system` 和 `zero-web` 启动说明适用于 Spring Boot 工程。
 
-## 首次启动
+### 首次启动
 
 项目使用 JDK 25。已使用 vfox 的开发者可在仓库根目录安装并选定项目版本。首次使用 Java 插件时先执行 `vfox add java`。
 
@@ -48,7 +48,7 @@ macOS 上，若旧版 vfox Java 插件留下空的 `Contents/Home`，Gradle 会�
 
 在默认开发环境中，可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
 
-### 开发与生产配置
+#### 开发与生产配置
 
 Spring Boot 先读取公共配置，再应用所选环境。数据库、缓存、文件存储、可选中间件、安全及审计的完整示例见 [application.yaml](zero-system/resources/application.yaml)。
 
@@ -59,7 +59,7 @@ Spring Boot 先读取公共配置，再应用所选环境。数据库、缓存�
 
 相对路径从应用工作目录解析。生产部署可用 `ZERO_DATABASE_MODE=postgresql` 和 `ZERO_DATABASE_POSTGRESQL_URL` 等环境变量指定外部数据库。生产部署可在首次启动前用 `ZERO_SYSTEM_ADMIN_USERNAME` 和 `ZERO_SYSTEM_ADMIN_PASSWORD` 指定独立的初始凭据。已有用户的数据库保留原账号、密码和授权。使用临时 SQLite 和随机回环端口的自动化测试可通过 `./gradlew :zero-core:test :zero-system:test` 运行。
 
-## 启动管理端
+### 启动管理端
 
 后端启动后，在另一个终端进入 `zero-web`。使用 Node.js 22.12 或更高版本和 pnpm，在该目录执行以下命令。
 
@@ -70,7 +70,7 @@ pnpm dev
 
 打开终端显示的地址（默认 [localhost:5173](http://localhost:5173)），使用后端初始化的账号登录。开发服务器将访问前缀下的 `/api` 请求转发至 `http://127.0.0.1:8080`，可通过 `ZERO_WEB_API_TARGET` 调整后端地址。生产部署说明见[管理端文档](zero-web/README.md)。
 
-## 工程
+### 工程
 
 工程锁定 Kotlin 2.4.21、Spring Boot 4.1.2 和 Gradle 9.7.0。Kotlin 编译插件与运行库 BOM 共用一个版本号。[Gradle 版本目录](gradle/libs.versions.toml)
 
@@ -86,7 +86,7 @@ pnpm dev
 
 从独立启动模块升级时，若已有 SQLite 文件位于旧启动目录，可用 `ZERO_DATABASE_SQLITE_PATH` 指定该文件的绝对路径，继续使用原有账号和业务数据。
 
-## 配置与二次开发
+### 配置与二次开发
 
 | 场景 | 入口 |
 | --- | --- |

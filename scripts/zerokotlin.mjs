@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const templateRoot = fileURLToPath(new URL('../', import.meta.url))
 const templateDirectory = 'ktor-template/'
+const databasePrefix = 'zero-system/resources/db/'
 const usage = `用法：zerokotlin init --name <项目名> --context-url <路径或 HTTP(S) URL>
 
   --name         必填。用作项目名和新建目录名
@@ -53,7 +54,7 @@ function updateProject(destination, name, contextPath) {
     ['contextPath = "/"', `contextPath = "${contextPath || '/'}"`],
   ])
   replaceSettings('web/vite.config.ts', [["const contextPath = ''", `const contextPath = '${contextPath}'`]])
-  replaceSettings('web/index.html', [['<title>ZeroKotlin</title>', `<title>${name}</title>`]])
+  replaceSettings('web/index.html', [['<title>ZeroKotlin 管理工作台</title>', `<title>${name}</title>`]])
   edit('README.md', (content) => content
     .replace('# ZeroKotlin', `# ${name}`)
     .replaceAll('http://127.0.0.1:8080/', `http://127.0.0.1:8080${contextPath}/`)
@@ -77,7 +78,10 @@ function initProject(name, contextPath) {
       const templateFile = basename(file) === '.gitignore' && !existsSync(source)
         ? join(dirname(source), '.npmignore')
         : source
-      const relativePath = file.startsWith(templateDirectory) ? file.slice(templateDirectory.length) : file
+      let relativePath = file
+      if (file.startsWith(databasePrefix)) relativePath = 'src/main/resources/db/' + file.slice(databasePrefix.length)
+      else if (file.startsWith('zero-web/')) relativePath = 'web/' + file.slice('zero-web/'.length)
+      else if (file.startsWith(templateDirectory)) relativePath = file.slice(templateDirectory.length)
       cpSync(templateFile, join(destination, relativePath), {
         recursive: true,
         force: false,

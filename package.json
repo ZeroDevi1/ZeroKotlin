@@ -22,12 +22,15 @@
     "ktor-template/settings.gradle.kts",
     "ktor-template/docs",
     "ktor-template/src",
-    "ktor-template/web/index.html",
-    "ktor-template/web/package.json",
-    "ktor-template/web/pnpm-lock.yaml",
-    "ktor-template/web/pnpm-workspace.yaml",
-    "ktor-template/web/src",
-    "ktor-template/web/tsconfig.json",
-    "ktor-template/web/vite.config.ts"
+    "zero-system/resources/db/migration",
+    "zero-system/resources/db/modules",
+    "zero-web/README.md",
+    "zero-web/index.html",
+    "zero-web/package.json",
+    "zero-web/pnpm-lock.yaml",
+    "zero-web/pnpm-workspace.yaml",
+    "zero-web/src",
+    "zero-web/tsconfig.json",
+    "zero-web/vite.config.ts"
   ]
 }

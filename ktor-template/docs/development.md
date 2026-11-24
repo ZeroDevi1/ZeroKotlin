@@ -1,116 +1,67 @@
-# Ktor 开发指南
+# Ktor 版开发指南
 
-## 从启动到第一个请求
+Ktor + Netty 负责 HTTP 和 WebSocket，JDBC、HikariCP 与 Flyway 负责数据访问和迁移。Spring Security Crypto 仅用于兼容原 BCrypt 口令哈希，不启动 Spring 容器。
 
-1. 安装 JDK 25。用 IntelliJ IDEA 打开生成的项目根目录，Gradle JVM 选用 JDK 25。终端启动时，把 `JAVA_HOME` 指向该 JDK。
-2. 在项目根目录执行 `.\gradlew.bat run`。macOS 和 Linux 使用 `./gradlew run`。终端显示监听地址后，请求健康检查。
-3. 在另一个终端发送请求。示例假定初始化时传入了 `--context-url /apps/orders`。根据项目 [README](../README.md) 里的健康检查地址调整变量，保留 `/health` 之前的部分。根路径对应 `http://127.0.0.1:8080`。
+## 启动与目录
 
-PowerShell：
+| 使用场景 | 后端启动（JDK 25） | 管理端目录 | SQL 来源 |
+| --- | --- | --- | --- |
+| 在 ZeroKotlin 仓库中修改 Ktor 模板 | 仓库根目录执行 `./gradlew -p ktor-template run` | `zero-web/` | `zero-system/resources/db/`，构建时打包 |
+| 在 `init` 生成的项目中开发 | 项目根目录执行 `./gradlew run` | `web/` | `src/main/resources/db/`，由 CLI 复制 |
 
-```powershell
-$baseUrl = 'http://127.0.0.1:8080/apps/orders'
-Invoke-RestMethod "$baseUrl/health"
-Invoke-RestMethod "$baseUrl/api/hello" -Method Post -ContentType 'application/json' -Body '{"name":"Lin"}'
-```
+Windows PowerShell 把 `./gradlew` 换成 `.\gradlew.bat`。另开终端，在管理端目录执行 `pnpm install --frozen-lockfile` 和 `pnpm dev`，使用 Node.js 22.12 或更新版本。
 
-macOS 和 Linux：
+- **同一个访问前缀必须贯穿浏览器、Vite 和 Ktor。** 模板工作树使用 `/`；`init --context-url /apps/orders` 会同时写入 Ktor 的 `app.contextPath` 和 Vite 的 `contextPath`。此时前端入口为 `http://127.0.0.1:5173/apps/orders/`，Ktor 就绪探针为 `http://127.0.0.1:8080/apps/orders/actuator/health`。反代应保留该前缀；Vite 开发代理可用 `ZERO_WEB_API_TARGET` 指向其他后端。
+- **默认管理员由 SQL 创建，不读管理员环境变量。** 空用户表首次应用 `db/migration/common/V9__initial_administrator.sql` 时插入 `admin / admin`，授予 `system-admin`。SQL 只写 BCrypt 哈希。V9 不给已有用户补授管理员角色；已执行过的 Flyway 版本也不会重跑。不要事后修改已在数据库上执行的 V9，否则会导致校验和不一致。默认账号只用于本地首次登录；开放网络访问前改密并确认旧默认密码无法再登录。
+- **存活与就绪分开。** `GET /health` 不检查依赖；`GET /actuator/health` 检查数据库和 Redis 状态，依赖不可用时返回 503。这两个路径以及下文的 API 路径都在配置的访问前缀下。
+
+## 配置
+
+Ktor 读取 [application.conf](../src/main/resources/application.conf)。相对数据库和文件路径从后端进程工作目录解析。Spring Boot 的 `application*.yaml` 与 `SPRING_PROFILES_ACTIVE` 对 Ktor 不生效。
+
+| 目标 | 配置与默认行为 |
+| --- | --- |
+| 地址和 API 文档 | `ZERO_HOST=127.0.0.1`，`ZERO_PORT=8080`；`ZERO_API_DOCS_ENABLED=false` 同时关闭 OpenAPI 与 Swagger UI。 |
+| 数据库 | `ZERO_DATABASE_MODE=auto\|sqlite\|postgresql\|mysql`。自动模式按 PostgreSQL、MySQL、SQLite 顺序选择；外库未配置或报告连接类故障时才继续，凭据或迁移错误不当成回退条件。生产建议显式指定数据库模式。 |
+| 数据库地址 | SQLite 默认 `data/zero-ktor.db`，用 `ZERO_DATABASE_SQLITE_PATH` 覆盖；远端使用 `ZERO_DATABASE_POSTGRESQL_URL`（或 `ZERO_DATABASE_MYSQL_URL`）及同前缀的 `_USERNAME`、`_PASSWORD`。URL 须含 `jdbc:` 前缀。数据库连接密码与管理台登录密码无关。 |
+| 会话和验证码 | `ZERO_SYSTEM_SESSION_SECONDS=28800`，`ZERO_SYSTEM_CAPTCHA_ENABLED=false`，`ZERO_SYSTEM_CAPTCHA_TTL_SECONDS=120`。会话在数据库中保存令牌摘要，验证码和限流由安全状态后端处理。 |
+| 安全状态 | `ZERO_CACHE_MODE=auto\|caffeine\|redis`。Redis 使用 `ZERO_CACHE_REDIS_HOST`、`_PORT`、`_USERNAME`、`_PASSWORD`、`_DATABASE`、`_TLS`、`_KEY_PREFIX`。Caffeine 的验证码和限流状态只存在于当前实例，多实例需要共享状态时显式选 Redis。 |
+| 文件 | `ZERO_FILES_MODE=local\|minio\|aliyun`。本地默认 `data/ktor-files`，可用 `ZERO_FILES_LOCAL_PATH` 修改。对象存储字段见配置文件。既有文件根据数据库记录的后端和位置访问；换工作目录、路径或桶不会迁移对象。文件最多 50 MiB，整个 multipart 请求最多 51 MiB；反代上传上限也要与之对齐。 |
+| 扩展 | `ZERO_SEARCH_ENABLED` 与 `ZERO_KAFKA_ENABLED` 默认 false，未启用时不会注册对应路由；其余配置在 `extensions` 中。 |
+| 文本清理 | `ZERO_SECURITY_XSS_ENABLED=true` 清理个人显示名称、账号显示名称和公告标题；不是全局请求过滤器，界面仍应按输出上下文转义。 |
+
+## 接口与代码入口
+
+| 场景 | 入口与边界 |
+| --- | --- |
+| 登录与权限 | `POST /api/auth/login` 接收 JSON 的 `username` 和 `password`；开启验证码时先取 `GET /api/auth/captcha`，登录时一并提交 `captchaId` 和 `captchaCode`。用返回的 `accessToken` 作 `Authorization: Bearer <token>`，调用 `GET /api/auth/me` 查看用户与权限，`PUT /api/auth/me/password` 修改密码。 |
+| 接口文档 | `/v3/api-docs`、`/v3/api-docs.yaml`、`/swagger-ui/`。路由与已注册功能以当前 Ktor 版本为准；根目录原 Spring Boot 文档不能替代这几个端点。 |
+| 路由与数据权限 | [Application.kt](../src/main/kotlin/dev/zerokotlin/ktor/Application.kt) 装配应用，[SystemRoutes.kt](../src/main/kotlin/dev/zerokotlin/ktor/SystemRoutes.kt) 挂载系统路由，[SystemStore.kt](../src/main/kotlin/dev/zerokotlin/ktor/SystemStore.kt) 提供事务、会话、权限与审计。业务需要限制行级可见范围时，须把过滤条件写进实际查询；接口权限检查不会自动过滤业务表。 |
+| 实时消息 | `/api/realtime/sse/demo` 为 SSE 演示，支持 `Last-Event-ID`；`/api/realtime/ws` 使用 `v12.stomp`，在 STOMP CONNECT 发送 Bearer 令牌。实时订阅与在线人数仅在当前进程内统计；消息不落库、不重放，慢连接可能丢消息。反代需要允许 WebSocket 升级，并关闭 SSE 响应缓冲。 |
+| 调度 | Quartz 用于计算触发时间，不运行 Quartz Scheduler。Ktor 轮询数据库中到期的任务和手动队列，在写锁内复核到期记录。不能把原 Quartz Job、监听器或配置当作 Ktor 插件复用。 |
+
+## 生成业务 CRUD
+
+在生成项目的根目录执行，下例先预览文件：
 
 ```sh
-base_url='http://127.0.0.1:8080/apps/orders'
-curl -i "$base_url/health"
-curl -i "$base_url/api/hello" -H 'Content-Type: application/json' -d '{"name":"Lin"}'
+./gradlew codegen --args='--module . --package dev.zerokotlin.orders --table orders_order --dry-run'
 ```
 
-健康检查应返回项目名和 `"status":"UP"`。问候接口应返回 `{"message":"你好，Lin"}`。运行服务的终端可以用 `Ctrl+C` 停止服务。
+提供 `--jdbc-url` 或 `ZERO_CODEGEN_JDBC_URL`，外库凭据使用 `ZERO_CODEGEN_DB_USERNAME` 与 `ZERO_CODEGEN_DB_PASSWORD`。在模板仓库开发时给命令加 `-p ktor-template`。去掉 `--dry-run` 后生成，生成器不会改数据库或覆盖已有文件。
 
-## 启动和修改 Vue 前端
+1. 将生成的 `register…Routes(store)` 接到 `GeneratedResource.kt` 中的 `businessRoutes`，沿用 `/api` 下的访问前缀。
+2. 将业务 SQL 放在资源目录的 `db/modules/<name>/`，通过 `ZERO_BUSINESS_MODULES` 启用，多个模块用逗号分隔。模块各自使用 `zero_history_<name>` 记录迁移。
+3. 按生成结果将权限编码加入业务迁移，并分配给角色。对有归属或租户的数据，在业务查询中补上相应的数据范围和写入校验。
 
-1. 保持 Ktor 服务运行。另开终端，使用 Node.js 22.12 或更高版本，在 `web/` 目录执行 `pnpm install --frozen-lockfile`。pnpm 版本见 [package.json](../web/package.json)。
-2. 执行 `pnpm dev`。打开项目 [README](../README.md) 对应的前端地址，默认端口 `5173`。如果 Vite 使用了其他端口，以终端地址为准。
-3. 页面加载时请求健康检查。输入姓名并提交后，页面展示 Ktor 返回的问候语。后端返回错误时，页面显示错误消息。
+## 打包与排查
 
-| 前端文件 | 职责 |
-| --- | --- |
-| [App.vue](../web/src/App.vue) | 页面组件，管理表单、加载状态和响应提示 |
-| [api.ts](../web/src/api.ts) | 集中管理 HTTP 请求和 JSON 类型。添加接口时在这里添加对应函数 |
-| [vite.config.ts](../web/vite.config.ts) | 配置页面路径前缀和本地 API 代理 |
-| [style.css](../web/src/style.css) | 页面排版、颜色和响应式样式 |
+- 生成项目在根目录执行 `./gradlew installDist`；在模板仓库执行 `./gradlew -p ktor-template installDist`。在相应项目的 `build/install/<项目名>/bin/` 中使用启动脚本，运行环境仍需 JDK 25。
+- 管理端执行 `pnpm build`，部署该前端目录下的 `dist/`。同站点反代须优先匹配访问前缀下的 `/api/`、探针及启用的文档端点，其他页面路径再交给前端的 SPA 回退。跨实例或经反代部署时，额外核对 WebSocket 的 Host/Origin 与升级头。
+- Gradle 找不到 JDK 25 时，核对 `JAVA_HOME`、`java -version` 和 IDE 的 Gradle JVM。页面访问返回 404 时，先直接请求带前缀的后端探针，再核对 Vite 转发目标和反代路径。探针返回 503 时，检查数据库连接及已配置的 Redis。已有库无法用默认账号登录时，不要删除数据库或重跑 V9，使用现有管理员账号。
 
-Vite 用 `base` 决定页面和静态资源的前缀，客户端请求从 `import.meta.env.BASE_URL` 读取同一个值。例如 `/apps/orders/` 下的页面会请求 `/apps/orders/health` 和 `/apps/orders/api/hello`，开发服务器保留路径转发到 Ktor。修改前缀时，同时更新 `app.contextPath` 和 Vite 的 `contextPath`。后端改用其他端口时，为 Vite 设置 `ZERO_WEB_API_TARGET`，例如 `http://127.0.0.1:8081`。 [Vite 代理配置](https://v7.vite.dev/config/server-options.html#server-proxy) · [Vite 环境变量](https://v7.vite.dev/guide/env-and-mode.html#built-in-constants)
+## 从 Spring Boot 迁移
 
-## 从哪里读代码
+共用的是 Flyway 脚本、表结构和 Vue 工作台。不要直接用生产库做验收：先用副本检查 Flyway 历史、已有账号登录、角色数据范围、文件位置及调度状态，再结合目标数据库、对象存储和反代验证上线配置。切换后端不会复制数据库内容或移动文件对象。
 
-| 文件 | 职责 |
-| --- | --- |
-| [build.gradle.kts](../build.gradle.kts) | 声明 Kotlin、序列化插件、Ktor BOM、Netty 和 Gradle 启动入口 |
-| [application.conf](../src/main/resources/application.conf) | 声明要加载的应用模块、监听地址、端口、项目名和访问前缀 |
-| [Application.kt](../src/main/kotlin/dev/zerokotlin/ktor/Application.kt) | 安装插件、注册路由前缀和健康检查、统一处理响应错误 |
-| [GreetingRoutes.kt](../src/main/kotlin/dev/zerokotlin/ktor/GreetingRoutes.kt) | 演示读取 JSON、校验输入和返回数据类 |
-| [logback.xml](../src/main/resources/logback.xml) | 配置日志级别和控制台输出 |
-
-`./gradlew run` 启动 Netty 的 `EngineMain`。它读取 `application.conf`，根据 `ktor.application.modules` 调用 `Application.module()`。在 `module()` 中显式安装插件、注册路由。使用过 Spring Boot 的开发者可以先把 `routing {}` 理解为注册 URL 与处理函数的地方，处理函数里的 `call` 对应一次 HTTP 请求和响应。 [Ktor 配置文档](https://ktor.io/docs/server-configuration-file.html) · [Ktor 路由文档](https://ktor.io/docs/server-routing.html)
-
-## 新增一个 GET 接口
-
-1. 在与 `GreetingRoutes.kt` 相同的包下创建 `PingRoutes.kt`，声明响应数据类和路由。
-
-   ```kotlin
-   package dev.zerokotlin.ktor
-
-   import io.ktor.server.response.respond
-   import io.ktor.server.routing.Route
-   import io.ktor.server.routing.get
-   import kotlinx.serialization.Serializable
-
-   @Serializable
-   private data class PingResponse(val message: String)
-
-   internal fun Route.pingRoutes() {
-       get("ping") {
-           call.respond(PingResponse("pong"))
-       }
-   }
-   ```
-
-2. 在 `Application.kt` 的 `route("api")` 中，在 `greetingRoutes()` 后调用 `pingRoutes()`。Ktor 会把上层的访问前缀、`api` 和 `ping` 拼成完整路径。
-3. 重启服务后请求 `<baseUrl>/api/ping`。预期 HTTP 200，响应是 `{"message":"pong"}`。
-
-接口增多后，可以按业务把路由拆成多个 `Route` 扩展函数。路由负责读取请求、检查输入并返回响应。需要复用的业务规则放到普通 Kotlin 类中，在 `module()` 创建实例，再作为参数传给对应路由。处理函数可以调用挂起函数。如果后续直接调用同步 JDBC 或文件读写，把阻塞操作放到 `Dispatchers.IO`。 [Kotlin 协程调度器](https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html)
-
-## 处理 JSON 和错误
-
-`ContentNegotiation` 安装了 kotlinx.serialization 的 JSON 转换器。给请求和响应数据类加 `@Serializable`，通过 `call.receive<T>()` 读取请求体，通过 `call.respond(...)` 返回对象。POST 调用需带 `Content-Type: application/json`。字段之间的业务约束在处理函数或业务服务里校验。 [Ktor JSON 文档](https://ktor.io/docs/server-serialization.html)
-
-| 场景 | HTTP 状态 | JSON `code` |
-| --- | --- | --- |
-| JSON 格式错误或缺少必需字段 | `400` | `bad_request` |
-| `name` 去掉首尾空白后长度不在 1–80 | `400` | `invalid_name` |
-| 请求路径不存在 | `404` | `not_found` |
-| POST 请求体使用 `text/plain` 等不支持的类型 | `415` | `unsupported_media_type` |
-| 处理请求时抛出未预料的异常 | `500` | `internal_error` |
-
-例如提交 `{"name":" "}` 会收到 `{"code":"invalid_name","message":"name 长度须为 1–80 个字符"}`。通用错误由 `StatusPages` 处理。排查 `500` 时查看服务端控制台，客户端只收到固定错误消息。 [Ktor StatusPages 文档](https://ktor.io/docs/server-status-pages.html)
-
-## 配置和打包
-
-| 配置 | 默认值 | 修改方式 |
-| --- | --- | --- |
-| 监听地址 | `127.0.0.1` | 环境变量 `ZERO_HOST`。容器内需要监听所有接口时可设为 `0.0.0.0` |
-| 监听端口 | `8080` | 环境变量 `ZERO_PORT` |
-| 访问前缀 | 由 `init --context-url` 指定 | 修改 `application.conf` 的 `app.contextPath` 后重启。使用 `/` 或 `/apps/orders` 这样的路径 |
-
-1. 在项目根目录执行 `./gradlew installDist`。Windows PowerShell 使用 `.\gradlew.bat installDist`。Gradle 会将启动脚本和依赖放进 `build/install/<项目名>/`。
-2. 用 JDK 25 运行 `build/install/<项目名>/bin/` 下的同名脚本。Windows 选用 `.bat`。部署环境可设置 `ZERO_HOST` 和 `ZERO_PORT`。
-3. 通过部署地址请求带访问前缀的 `/health`，确认服务可达。
-
-前端在 `web/` 执行 `pnpm build`，静态文件输出到 `web/dist/`。在同一站点挂载前端文件，并把前缀下的 `/health` 和 `/api/` 请求原样转发给 Ktor。例如在 `/apps/orders/` 部署页面，把 `/apps/orders/health` 和 `/apps/orders/api/` 交给后端。 [Vite 静态部署指南](https://v7.vite.dev/guide/static-deploy)
-
-### 常见问题
-
-- **Gradle 提示找不到 Java 25**。检查 `JAVA_HOME`、`java -version` 和 IntelliJ 的 Gradle JVM。
-- **提示端口已被占用**。PowerShell 中用 `$env:ZERO_PORT = '8081'` 后重新运行。macOS 和 Linux 使用 `ZERO_PORT=8081 ./gradlew run`。
-- **页面显示后端不可用**。先直接访问后端健康检查确认 Ktor 可达，再检查 `ZERO_WEB_API_TARGET` 和两个服务的访问前缀。
-- **启动了但请求返回 404**。核对 `app.contextPath` 和请求地址。前缀为 `/apps/orders` 时，健康检查地址的路径是 `/apps/orders/health`。
-
-需要把新版模板合入业务项目时，参考[模板升级指南](template-upgrades.md)。
+Spring 自动装配、MyBatis XML、JPA 扩展示例、`zero-agent` 示例和原 GraalVM Native Image 配置不是 Ktor 运行时的一部分。已有业务模块需要改成显式的 Ktor 路由和 JDBC 实现，不能只复制 Spring 注解或配置。
