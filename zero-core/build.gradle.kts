@@ -9,6 +9,8 @@ dependencies {
     api(platform(libs.spring.boot.bom))
     api("io.ktor:ktor-server-core")
     api("com.zaxxer:HikariCP")
+    api(libs.mybatis.plus.core)
+    implementation(libs.mybatis.plus.jsqlparser)
     api("org.apache.kafka:kafka-clients")
     implementation("org.xerial:sqlite-jdbc")
     implementation("com.github.ben-manes.caffeine:caffeine")

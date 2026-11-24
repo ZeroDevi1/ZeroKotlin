@@ -29,6 +29,8 @@ dependencies {
     implementation("io.ktor:ktor-server-swagger")
     implementation("io.ktor:ktor-server-body-limit")
     implementation("org.flywaydb:flyway-core")
+    implementation("org.xerial:sqlite-jdbc")
+    implementation(libs.mybatis.plus.extension)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
     implementation("org.quartz-scheduler:quartz")
     implementation(libs.jsoup)

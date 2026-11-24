@@ -61,7 +61,7 @@ internal data class ResourceColumn(
     val remarks: String?,
 ) {
     /** 字段说明优先沿用 JDBC 列注释。 */
-    val description: String = remarks?.replace(Regex("[\\s\\p{Cntrl}]+"), " ")?.trim()
+    val description: String = remarks?.replace(Regex("[\\s\\p{Cntrl}\\p{Z}]+"), " ")?.trim()
         ?.takeIf(String::isNotEmpty) ?: "数据库列 $sqlName。"
 }
 
@@ -113,7 +113,7 @@ internal fun checkedSqlName(name: String, label: String): String {
     return name
 }
 
-/** 目标包必须处于应用的默认扫描范围内。 */
+/** 目标包遵循业务代码的 Kotlin 命名空间约定。 */
 internal fun checkedPackage(name: String): String {
     val prefix = "dev.zerokotlin."
     val segments = name.removePrefix(prefix).split('.')

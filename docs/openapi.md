@@ -10,4 +10,4 @@
 
 在 Swagger UI 提交 `POST /api/auth/login`，复制响应的 `accessToken`，再通过 **Authorize** 授权。可发送 `GET /api/auth/me` 确认当前会话。启用验证码时先调用 `GET /api/auth/captcha`。
 
-路由和 OpenAPI 入口在 [Application.kt](../zero-system/src/dev/zerokotlin/ktor/Application.kt) 注册。对外契约以实际启用的路由及其请求和响应类型为准。
+生成的 Controller 将操作权限和关键响应写在路由 KDoc 中，供 OpenAPI 编译插件提取。路由与 OpenAPI 入口在 [Application.kt](../zero-system/src/dev/zerokotlin/ktor/Application.kt) 注册。对外契约以实际启用的路由及其请求和响应类型为准。

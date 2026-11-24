@@ -1,6 +1,6 @@
 # Ktor 版开发指南
 
-Ktor + Netty 负责 HTTP 和 WebSocket，JDBC、HikariCP 与 Flyway 负责数据访问和迁移。Spring Security Crypto 仅用于兼容原 BCrypt 口令哈希，不启动 Spring 容器。
+Ktor + Netty 负责 HTTP 和 WebSocket，MyBatis-Plus 使用 HikariCP 管理的 JDBC 连接，Flyway 负责迁移。Spring Security Crypto 仅用于兼容原 BCrypt 口令哈希，不启动 Spring 容器。
 
 ## 启动与目录
 
@@ -31,7 +31,7 @@ Ktor 读取 [application.conf](../zero-system/resources/application.conf)。Grad
 | --- | --- |
 | 登录与权限 | `POST /api/auth/login` 接收 JSON 的 `username` 和 `password`；开启验证码时先取 `GET /api/auth/captcha`，登录时一并提交 `captchaId` 和 `captchaCode`。用返回的 `accessToken` 作 `Authorization: Bearer <token>`，调用 `GET /api/auth/me` 查看用户与权限，`PUT /api/auth/me/password` 修改密码。 |
 | 接口文档 | `/v3/api-docs`、`/v3/api-docs.yaml`、`/swagger-ui/`。路由与已注册功能以当前 Ktor 版本为准。 |
-| 路由与数据权限 | [Application.kt](../zero-system/src/dev/zerokotlin/ktor/Application.kt) 装配应用，[SystemRoutes.kt](../zero-system/src/dev/zerokotlin/ktor/SystemRoutes.kt) 挂载系统路由，[SystemStore.kt](../zero-system/src/dev/zerokotlin/ktor/SystemStore.kt) 提供事务、会话、权限与审计。业务需要限制行级可见范围时，须把过滤条件写进实际查询；接口权限检查不会自动过滤业务表。 |
+| 路由与数据权限 | [Application.kt](../zero-system/src/dev/zerokotlin/ktor/Application.kt) 装配应用，[ApiRoutes.kt](../zero-system/src/dev/zerokotlin/ktor/ApiRoutes.kt) 装配系统 Controller，[BusinessRoutes.kt](../zero-system/src/dev/zerokotlin/ktor/BusinessRoutes.kt) 装配业务 Controller 及 Mapper，[SystemStore.kt](../zero-system/src/dev/zerokotlin/ktor/SystemStore.kt) 提供事务、会话、权限与审计。业务需要限制行级可见范围时，须把过滤条件写进实际查询；接口权限检查不会自动过滤业务表。 |
 | 实时消息 | `/api/realtime/sse/demo` 为 SSE 演示，支持 `Last-Event-ID`；`/api/realtime/ws` 使用 `v12.stomp`，在 STOMP CONNECT 发送 Bearer 令牌。实时订阅与在线人数仅在当前进程内统计；消息不落库、不重放，慢连接可能丢消息。反代需要允许 WebSocket 升级，并关闭 SSE 响应缓冲。 |
 | 调度 | Quartz 用于计算触发时间，不运行 Quartz Scheduler。Ktor 轮询数据库中到期的任务和手动队列，在写锁内复核到期记录。不能把原 Quartz Job、监听器或配置当作 Ktor 插件复用。 |
 
@@ -49,4 +49,4 @@ Ktor 读取 [application.conf](../zero-system/resources/application.conf)。Grad
 
 共用的是 Flyway 脚本、表结构和 Vue 工作台。不要直接用生产库做验收：先用副本检查 Flyway 历史、已有账号登录、角色数据范围、文件位置及调度状态，再结合目标数据库、对象存储和反代验证上线配置。切换后端不会复制数据库内容或移动文件对象。
 
-Spring Boot 版的自动装配、MyBatis XML、JPA 扩展示例和 GraalVM Native Image 配置随 `main` 分支维护。迁移已有业务时，将接口改为显式注册的 Ktor 路由，并把持久化和权限检查接到 JDBC 实现。
+Spring Boot 的 Bean 自动装配、JPA 扩展示例和 GraalVM Native Image 配置随 `main` 分支维护。迁移已有业务时，将接口改为显式注册的 Ktor 路由，并把 Mapper 与业务权限接到同一个应用事务。

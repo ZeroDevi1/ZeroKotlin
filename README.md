@@ -37,10 +37,10 @@ npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context
 
 | 模块 | 职责 |
 | --- | --- |
-| `zero-core` | JDBC 数据源、文件存储、验证码与安全状态、Excel、Kafka 等通用基础设施。 |
+| `zero-core` | JDBC 数据源、MyBatis-Plus、文件存储、验证码与安全状态、Excel、Kafka 等通用基础设施。 |
 | `zero-system` | Ktor 启动入口、系统业务与路由、数据库迁移。入口配置在 [application.conf](zero-system/resources/application.conf)。 |
-| `zero-codegen` | 从 SQLite、PostgreSQL 或 MySQL 表生成 Ktor JDBC CRUD 路由。 |
+| `zero-codegen` | 从 SQLite、PostgreSQL 或 MySQL 表生成 Ktor Controller、Service、ServiceImpl、MyBatis-Plus Mapper 和实体。 |
 | `zero-agent` | 可选 AgentScope 开发模块，使用 `-PwithAgent=true` 加入后端运行包。 |
 | `zero-web` | Vue 3 + TypeScript 管理工作台。 |
 
-后端模块沿用 `src/`、`resources/` 和 `test/` 布局。配置、部署和迁移边界见 [Ktor 开发指南](docs/development.md)。业务模块可参考 [CRUD 生成器](docs/codegen.md)和[开发入口](docs/new-module.md)。[Kotlin 后端开发手册](docs/kotlin-development.md)提供工程内的代码示例。已有项目升级见[合并模板更新](docs/template-upgrades.md)。
+后端模块沿用 `src/`、`resources/` 和 `test/` 布局。配置、部署和迁移边界见 [Ktor 开发指南](docs/development.md)。按 [系统路由注册表](zero-system/src/dev/zerokotlin/ktor/ApiRoutes.kt) 可从接口找到代码。业务模块可参考 [CRUD 生成器](docs/codegen.md)和[开发入口](docs/new-module.md)。[Kotlin 后端开发手册](docs/kotlin-development.md)提供工程内的代码示例。已有项目升级见[合并模板更新](docs/template-upgrades.md)。

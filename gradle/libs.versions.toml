@@ -1,5 +1,6 @@
 [versions]
 ktor = "3.6.1"
+mybatis-plus = "3.5.18.1"
 kotlin = "2.4.21"
 spring-boot = "4.1.2"
 agentscope = "2.0.4"
@@ -10,6 +11,9 @@ hutool = "5.8.48"
 jsoup = "1.24.1"
 
 [libraries]
+mybatis-plus-core = { module = "com.baomidou:mybatis-plus-core", version.ref = "mybatis-plus" }
+mybatis-plus-extension = { module = "com.baomidou:mybatis-plus-extension", version.ref = "mybatis-plus" }
+mybatis-plus-jsqlparser = { module = "com.baomidou:mybatis-plus-jsqlparser", version.ref = "mybatis-plus" }
 ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }

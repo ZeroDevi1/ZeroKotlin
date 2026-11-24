@@ -1,6 +1,6 @@
 # 系统模块
 
-`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。Ktor 处理路由，JDBC 查询持久化会话和权限。Flyway 从 `classpath:db/migration/common` 按版本顺序执行系统迁移。
+`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。Ktor Controller 处理路由，ServiceImpl 管理权限和事务，MyBatis-Plus Mapper 执行常规持久化操作。Flyway 从 `classpath:db/migration/common` 按版本顺序执行系统迁移。
 
 ## 首次启动
 
@@ -100,4 +100,4 @@ VALUES ('orders-list', 'orders', '订单列表', '/orders', 'orders:order:read',
 | `sys_menu` | `id` 为字符串主键，最长 36 字符。必填 `name`。可空 `module_name` 对应可选模块名称，模块移除后导航自动隐藏其菜单。可空 `parent_id`、`path`、`permission_code`，分别关联父菜单、站内路径和权限点。`sort_order` 默认 0，`enabled` 默认 1。 |
 | `sys_role_permission` | 复合主键 `(role_id, permission_code)`，关联已有角色、权限点。业务角色的授予关系也可通过系统 API 配置。 |
 
-在路由中校验 Bearer 会话与权限。业务查询自行约束行级范围，写入和审计可由 `SystemStore.write` 在同一 JDBC 事务内提交。详见[业务开发入口](new-module.md)。
+在 Controller 读取 Bearer 令牌，由 ServiceImpl 在同一业务事务内校验会话与权限。业务查询自行约束行级范围，写入和审计可由 `SystemStore.write` 在同一 JDBC 事务内提交。详见[业务开发入口](new-module.md)。

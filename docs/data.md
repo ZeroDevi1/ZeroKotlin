@@ -1,12 +1,16 @@
 # 数据库、迁移与安全状态
 
-Ktor 通过 JDBC 和 HikariCP 访问数据库。配置位于 [application.conf](../zero-system/resources/application.conf)，连接选型由 [DatabaseSettings.kt](../zero-core/src/dev/zerokotlin/core/database/DatabaseSettings.kt) 实现。
+Ktor 使用 MyBatis-Plus 与参数化 JDBC 查询，通过 HikariCP 访问数据库。配置位于 [application.conf](../zero-system/resources/application.conf)，连接选型由 [DatabaseSettings.kt](../zero-core/src/dev/zerokotlin/core/database/DatabaseSettings.kt) 实现。
 
 ## 数据源
 
 - `ZERO_DATABASE_MODE=auto` 按 PostgreSQL、MySQL、SQLite 顺序选择。无远端地址或驱动返回连接不可达时尝试下一个候选。
 - `ZERO_DATABASE_MODE=sqlite` 使用 `ZERO_DATABASE_SQLITE_PATH`，默认为项目工作目录下的 `data/zero-ktor.db`。启用 SQLite 外键检查。
 - `ZERO_DATABASE_MODE=postgresql` 或 `mysql` 使用对应的 `ZERO_DATABASE_POSTGRESQL_*` 或 `ZERO_DATABASE_MYSQL_*` 环境变量。使用 `URL`、`USERNAME` 和 `PASSWORD` 分别指定 JDBC 地址、用户名和密码。
+
+## 业务事务与 MyBatis-Plus
+
+应用使用 [MapperSessions.kt](../zero-core/src/dev/zerokotlin/core/database/MapperSessions.kt) 创建 SqlSessionFactory。ServiceImpl 先通过 `SystemStore` 检查权限并取得 JDBC 事务，再在同一连接上使用 Mapper。提交、回滚和连接归还由 SystemStore 统一管理。内置功能的联表查询、递归数据范围和调度状态更新仍在对应的 Mapper 文件中表达。
 
 ## Flyway 迁移
 

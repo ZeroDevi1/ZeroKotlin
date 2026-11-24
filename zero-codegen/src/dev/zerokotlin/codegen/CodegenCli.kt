@@ -22,7 +22,7 @@ private val usage = """
     远程数据库凭据从 ZERO_CODEGEN_DB_USERNAME 和 ZERO_CODEGEN_DB_PASSWORD 读取。
 """.trimIndent()
 
-/** 从指定数据库读取表定义，在现有业务模块中生成 Ktor CRUD 源码。 */
+/** 从指定数据库读取表定义，在现有业务模块中生成 Ktor Controller、Service 和 MyBatis-Plus Mapper。 */
 fun main(args: Array<String>) {
     if (args.isEmpty() || args.contentEquals(arrayOf("--help"))) {
         println(usage)

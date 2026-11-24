@@ -1,6 +1,6 @@
 # Kotlin 后端开发手册
 
-可从用户列表的调用链了解 Kotlin 在 Ktor 工程中的用法。[AccountsRoutes.kt](../zero-system/src/dev/zerokotlin/ktor/AccountsRoutes.kt) 读取分页和筛选参数，[AdministrationRoutes.kt](../zero-system/src/dev/zerokotlin/ktor/AdministrationRoutes.kt) 执行列表及总数查询，[SystemStore.kt](../zero-system/src/dev/zerokotlin/ktor/SystemStore.kt) 负责会话、权限和 JDBC 事务。
+可从用户列表的调用链了解 Kotlin 在 Ktor 工程中的用法。[AccountController.kt](../zero-system/src/dev/zerokotlin/ktor/system/account/AccountController.kt) 读取分页和筛选参数，[AccountServiceImpl.kt](../zero-system/src/dev/zerokotlin/ktor/system/account/AccountServiceImpl.kt) 校验权限，[UserMapper.kt](../zero-system/src/dev/zerokotlin/ktor/system/account/UserMapper.kt) 执行列表及总数查询，[SystemStore.kt](../zero-system/src/dev/zerokotlin/ktor/SystemStore.kt) 负责会话、权限和 JDBC 事务。
 
 后端源码使用模块下的 `src/`。本页示例在 `zero-system` 主源码中使用工程内的模型。接入业务见[开发业务功能](new-module.md)。
 
@@ -13,17 +13,17 @@ Kotlin 使用 `fun name(parameter: Type): ReturnType` 声明函数。块体用 `
 ```kotlin
 import dev.zerokotlin.ktor.Page
 import dev.zerokotlin.ktor.Window
-import dev.zerokotlin.ktor.UserListEntry
+import dev.zerokotlin.ktor.system.account.UserEntry
 
 internal fun userPageWindow(page: Int = 1, size: Int = 20): Window =
     Window(page, size)
 
-private fun Page<UserListEntry>.enabledUserCountText(): String {
+private fun Page<UserEntry>.enabledUserCountText(): String {
     val enabled = items.count { it.user.enabled }
     return "第 $page 页有 $enabled 个启用账号"
 }
 
-private fun printEnabledUserCount(page: Page<UserListEntry>) {
+private fun printEnabledUserCount(page: Page<UserEntry>) {
     println(page.enabledUserCountText())
 }
 ```
@@ -40,7 +40,7 @@ private fun printEnabledUserCount(page: Page<UserListEntry>) {
 `String` 表示必有值，`String?` 允许缺失。查询中的 `departmentId == null` 表示省略显式的部门筛选，账号可见范围仍然生效。响应中的 `user.departmentId == null` 表示账号没有所属部门。
 
 ```kotlin
-import dev.zerokotlin.ktor.User
+import dev.zerokotlin.ktor.system.account.User
 
 private fun departmentLabel(user: User, departments: Map<String, String>): String {
     val departmentId = user.departmentId ?: return "未分配部门"
@@ -54,32 +54,32 @@ private fun departmentLabel(user: User, departments: Map<String, String>): Strin
 
 ## 用集合函数表达筛选和转换
 
-函数类型 `(UserListEntry) -> Boolean` 表示接收一个列表项并返回布尔值。`{ entry -> entry.user.enabled }` 是符合该类型的 lambda，只有一个参数时可写成 `{ it.user.enabled }`。`::isEnabled` 引用已有函数，`User::departmentId` 引用已有属性，两者都可作为相应的函数参数。接收或返回函数的函数叫高阶函数。最后一个实参是 lambda 时，可放到右括号外。[Kotlin 高阶函数与 lambda](https://kotlinlang.org/docs/lambdas.html)
+函数类型 `(UserEntry) -> Boolean` 表示接收一个列表项并返回布尔值。`{ entry -> entry.user.enabled }` 是符合该类型的 lambda，只有一个参数时可写成 `{ it.user.enabled }`。`::isEnabled` 引用已有函数，`User::departmentId` 引用已有属性，两者都可作为相应的函数参数。接收或返回函数的函数叫高阶函数。最后一个实参是 lambda 时，可放到右括号外。[Kotlin 高阶函数与 lambda](https://kotlinlang.org/docs/lambdas.html)
 
-这些教学函数消费已经查询出的 `Page<UserListEntry>`，例如用于展示本页统计。
+这些教学函数消费已经查询出的 `Page<UserEntry>`，例如用于展示本页统计。
 
 ```kotlin
 import dev.zerokotlin.ktor.Page
-import dev.zerokotlin.ktor.AssignedRole
-import dev.zerokotlin.ktor.UserListEntry
-import dev.zerokotlin.ktor.User
+import dev.zerokotlin.ktor.system.account.AssignedRole
+import dev.zerokotlin.ktor.system.account.UserEntry
+import dev.zerokotlin.ktor.system.account.User
 
 private fun usersMatching(
-    page: Page<UserListEntry>,
-    matches: (UserListEntry) -> Boolean,
-): List<UserListEntry> = page.items.filter(matches)
+    page: Page<UserEntry>,
+    matches: (UserEntry) -> Boolean,
+): List<UserEntry> = page.items.filter(matches)
 
-private fun isEnabled(entry: UserListEntry): Boolean = entry.user.enabled
+private fun isEnabled(entry: UserEntry): Boolean = entry.user.enabled
 
 private fun enabledUsersByDepartment(
-    page: Page<UserListEntry>,
+    page: Page<UserEntry>,
 ): Map<String?, List<User>> =
     usersMatching(page, ::isEnabled)
         .map { it.user }
         .groupBy(User::departmentId)
 
 private fun rolesInDepartment(
-    page: Page<UserListEntry>,
+    page: Page<UserEntry>,
     departmentId: String,
 ): Map<String, AssignedRole> =
     usersMatching(page) { it.user.departmentId == departmentId }
@@ -90,7 +90,7 @@ private fun rolesInDepartment(
 | 操作 | 结果与用途 |
 | --- | --- |
 | `filter` | 保留符合条件的列表项。 |
-| `map` | 把每个列表项变为一个新值，例如从 `UserListEntry` 取出 `User`。 |
+| `map` | 把每个列表项变为一个新值，例如从 `UserEntry` 取出 `User`。 |
 | `flatMap` | 将每项对应的集合展开成一个列表，例如取出本页若干账号的全部角色。 |
 | `associateBy` | 按键索引，每个键保留最后遇到的值。示例按角色 ID 合并重复角色。 |
 | `groupBy` | 按键保留一组值。可空的部门 ID 会形成 `null` 分组。 |
@@ -100,7 +100,7 @@ private fun rolesInDepartment(
 `List` 上的这些变换逐步求值，多个变换通常产生中间集合。`Sequence` 的 `filter`、`map` 和 `take` 在终止操作消费时才求值。以下函数可接在同一段教学代码后面，从本页只取前若干个启用账号的显示名。
 
 ```kotlin
-private fun firstEnabledNames(page: Page<UserListEntry>, limit: Int): List<String> {
+private fun firstEnabledNames(page: Page<UserEntry>, limit: Int): List<String> {
     require(limit >= 0) { "limit 必须大于等于 0" }
     return page.items.asSequence()
         .filter(::isEnabled)
@@ -154,10 +154,10 @@ fun orderStatusFromCode(code: String): OrderStatus? =
 下面的教学示例让找到用户的分支携带详情，缺失的分支只表达状态。`when` 表达式覆盖所有分支后可以省略 `else`。新增分支后，编译器会指出哪些 `when` 表达式需要补齐分支。当前仓库的用户详情服务通过 `missing("用户")` 处理查无用户。[Kotlin 密封类型](https://kotlinlang.org/docs/sealed-classes.html)
 
 ```kotlin
-import dev.zerokotlin.ktor.UserDetails
+import dev.zerokotlin.ktor.system.account.UserDetail
 
 private sealed interface UserLookup {
-    data class Found(val details: UserDetails) : UserLookup
+    data class Found(val details: UserDetail) : UserLookup
     data object Missing : UserLookup
 }
 
@@ -179,7 +179,7 @@ private fun lookupLabel(result: UserLookup): String = when (result) {
 
 ```kotlin
 import dev.zerokotlin.ktor.Page
-import dev.zerokotlin.ktor.UserListEntry
+import dev.zerokotlin.ktor.system.account.UserEntry
 
 /**
  * 供调用方展示的启用账号信息。
@@ -195,6 +195,6 @@ internal data class EnabledUserPreview(val id: String, val label: String)
  * @param page 已在数据库中完成可见范围筛选的用户页。
  * @return 与原页顺序一致的启用账号信息，当前页没有启用账号时返回空列表。
  */
-internal fun enabledUserPreviews(page: Page<UserListEntry>): List<EnabledUserPreview> =
+internal fun enabledUserPreviews(page: Page<UserEntry>): List<EnabledUserPreview> =
     page.items.filter { it.user.enabled }.map { EnabledUserPreview(it.user.id, it.user.displayName) }
 ```

@@ -5,6 +5,9 @@ import dev.zerokotlin.core.database.DatabaseSettings
 import dev.zerokotlin.core.security.LoginCaptchaService
 import dev.zerokotlin.core.security.configuredSecurityState
 import dev.zerokotlin.core.storage.configuredFileStorages
+import dev.zerokotlin.ktor.system.extension.ExtensionSettings
+import dev.zerokotlin.ktor.system.file.multipartLimit
+import dev.zerokotlin.ktor.system.job.startJobWorker
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.openapi.HttpSecurityScheme
@@ -47,6 +50,7 @@ fun Application.module() {
     }
 
     val extensions = ExtensionSettings(config)
+    val enabledBusinessModules = businessModules.filter { it.name in extensions.modules }
     val files = configuredFileStorages(config)
     val security = try {
         configuredSecurityState(config)
@@ -64,6 +68,7 @@ fun Application.module() {
         SystemStore(
             DatabaseSettings(config), config.property("zero.sessionSeconds").getString().toLong(), extensions.modules,
             config.property("zero.sanitizeText").getString().toBooleanStrict(),
+            mapperTypes = systemMapperTypes + enabledBusinessModules.flatMap { it.mappers },
         )
     } catch (failure: Exception) {
         runCatching { security.close() }.onFailure(failure::addSuppressed)
@@ -143,9 +148,7 @@ fun Application.module() {
                 }
             }
             route("api") {
-                systemRoutes(store, captcha, files, security)
-                extensionRoutes(store, extensions)
-                businessRoutes(store)
+                apiRoutes(store, captcha, files, security, extensions, enabledBusinessModules)
             }
         }
     }
