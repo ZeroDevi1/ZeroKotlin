@@ -1,6 +1,20 @@
 package dev.zerokotlin.system
 
-import dev.zerokotlin.ZeroKotlinApplication
+import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigResolveOptions
+import dev.zerokotlin.ktor.module as zeroKotlinModule
+import io.ktor.server.application.applicationEnvironment
+import io.ktor.server.application.serverConfig
+import io.ktor.server.config.HoconApplicationConfig
+import io.ktor.server.engine.EmbeddedServer
+import io.ktor.server.engine.connector
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.netty.NettyApplicationEngine
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -15,37 +29,50 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.io.TempDir
-import org.springframework.boot.SpringApplication
-import org.springframework.context.ConfigurableApplicationContext
-import tools.jackson.databind.json.JsonMapper
 
 /** 在回环端口以真实 HTTP 连接验证 SQLite 启动、Bearer 鉴权及 SSE 分帧。 */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RealtimeSseIntegrationTest {
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
-    private lateinit var context: ConfigurableApplicationContext
+    private lateinit var server: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>
     private lateinit var origin: String
     private lateinit var admin: String
     private val password = UUID.randomUUID().toString()
-    private val mapper = JsonMapper.builder().build()
 
     @BeforeAll
     fun start(@TempDir directory: Path) {
-        context = SpringApplication.run(
-            ZeroKotlinApplication::class.java,
-            "--spring.profiles.active=dev", "--server.address=127.0.0.1", "--server.port=0",
-            "--zero.database.mode=sqlite", "--zero.database.sqlite.path=${directory.resolve("system.db")}",
-            "--zero.cache.mode=caffeine", "--zero.system.captcha.enabled=false",
-            "--zero.system.admin.username=admin", "--zero.system.admin.password=$password",
-        )
-        origin = "http://127.0.0.1:${context.environment.getRequiredProperty("local.server.port")}"
-        admin = login("admin")
+        val overrides = ConfigFactory.parseMap(mapOf(
+            "app.contextPath" to "/",
+            "zero.databaseMode" to "sqlite",
+            "zero.databasePath" to directory.resolve("system.db").toString(),
+            "zero.cacheMode" to "caffeine",
+            "zero.captchaEnabled" to false,
+            "extensions.businessModules" to "",
+            "extensions.searchEnabled" to false,
+            "extensions.kafkaEnabled" to false,
+        ))
+        val environment = applicationEnvironment {
+            config = HoconApplicationConfig(
+                overrides.withFallback(ConfigFactory.parseResources("application.conf"))
+                    .resolve(ConfigResolveOptions.noSystem()),
+            )
+        }
+        server = embeddedServer(Netty, serverConfig(environment) { module { zeroKotlinModule() } }) {
+            connector {
+                host = "127.0.0.1"
+                port = 0
+            }
+        }
+        server.start(wait = false)
+        val port = runBlocking { server.engine.resolvedConnectors().single().port }
+        origin = "http://127.0.0.1:$port"
+        admin = login("admin", "admin")
     }
 
     @AfterAll
     fun stop() {
         client.close()
-        if (::context.isInitialized) context.close()
+        if (::server.isInitialized) server.stop()
     }
 
     @Test
@@ -81,15 +108,15 @@ class RealtimeSseIntegrationTest {
         assertEquals(400, stream(admin, "invalid").statusCode())
     }
 
-    private fun login(name: String): String {
+    private fun login(name: String, password: String = this.password): String {
         val response = post("/api/auth/login", mapOf("username" to name, "password" to password))
         assertEquals(200, response.statusCode())
-        return mapper.readTree(response.body()).get("accessToken").asString()
+        return Json.parseToJsonElement(response.body()).jsonObject.getValue("accessToken").jsonPrimitive.content
     }
 
     private fun post(path: String, body: Map<String, String>, token: String? = null): HttpResponse<String> {
         val request = request(path, token).header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body))).build()
+            .POST(HttpRequest.BodyPublishers.ofString(Json.encodeToString(body))).build()
         return client.send(request, HttpResponse.BodyHandlers.ofString())
     }
 

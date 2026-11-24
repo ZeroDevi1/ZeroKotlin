@@ -1,38 +1,5 @@
 package dev.zerokotlin.core.security
 
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside
-import tools.jackson.core.JsonGenerator
-import tools.jackson.databind.BeanProperty
-import tools.jackson.databind.SerializationContext
-import tools.jackson.databind.ValueSerializer
-import tools.jackson.databind.annotation.JsonSerialize
-
-/**
- * 在 Jackson 输出字符串字段时遮盖中间部分。数据库中的值及反序列化输入保持原样。
- * @property prefix 保留的前缀 Unicode 码点数。
- * @property suffix 保留的后缀 Unicode 码点数。
- */
-@Target(AnnotationTarget.FIELD, AnnotationTarget.PROPERTY_GETTER)
-@Retention(AnnotationRetention.RUNTIME)
-@JacksonAnnotationsInside
-@JsonSerialize(using = MaskedStringSerializer::class)
-annotation class Masked(val prefix: Int = 0, val suffix: Int = 0)
-
-/** Jackson 按属性解析 [Masked] 的参数，缺省时遮盖整个字符串。 */
-class MaskedStringSerializer private constructor(private val prefix: Int, private val suffix: Int) : ValueSerializer<String>() {
-    constructor() : this(0, 0)
-
-    override fun createContextual(context: SerializationContext, property: BeanProperty?): ValueSerializer<*> {
-        val rule = property?.getAnnotation(Masked::class.java) ?: return this
-        require(rule.prefix >= 0 && rule.suffix >= 0) { "脱敏保留长度必须为非负数" }
-        return MaskedStringSerializer(rule.prefix, rule.suffix)
-    }
-
-    override fun serialize(value: String, generator: JsonGenerator, context: SerializationContext) {
-        generator.writeString(FieldMasking.keepEdges(value, prefix, suffix))
-    }
-}
-
 /** 在构建对外结果时遮盖字符串中的敏感部分。 */
 object FieldMasking {
     /**

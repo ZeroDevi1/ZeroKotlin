@@ -42,7 +42,7 @@ curl -N --fail-with-body -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: text/event-stream" http://localhost:8080/api/realtime/sse/demo
 ```
 
-请求带 `Last-Event-ID: 2` 时只发送第 3 个 tick 和结束事件。最后收到的 ID 已为 3 时返回 204，非法 ID 返回 400。代理需为该路径关闭响应缓冲，以便客户端即时显示事件。示例事件序列仅用于演示传输。[Spring MVC 流式响应](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-ann-async.html)
+请求带 `Last-Event-ID: 2` 时只发送第 3 个 tick 和结束事件。最后收到的 ID 已为 3 时返回 204，非法 ID 返回 400。代理需为该路径关闭响应缓冲，以便客户端即时显示事件。示例事件序列仅用于演示传输。
 
 ## 部署与范围
 
@@ -50,4 +50,4 @@ curl -N --fail-with-body -H "Authorization: Bearer $ACCESS_TOKEN" \
 - 消息代理和在线统计均限于当前进程。`204` 表示提交成功，接收者须在线且已订阅才有机会接收。消息只在页面内显示最近 100 条，离线消息和断线期间的消息无补发。已发布公告及已读状态仍在 `/inbox` 查看。
 - 集成时在 `zero-web/src/router/navigation.ts` 登记 `/realtime`、`RealtimeView.vue` 和 `system:message:read`，使迁移生成的菜单可进入页面。
 
-[Spring Boot WebSocket](https://docs.spring.io/spring-boot/reference/messaging/websockets.html) · [STOMP.js 客户端](https://github.com/stomp-js/stompjs/tree/v7.5.0)
+[STOMP.js 客户端](https://github.com/stomp-js/stompjs/tree/v7.5.0)

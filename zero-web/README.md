@@ -45,4 +45,4 @@ Vite 将访问前缀下的同源 `/api` 请求转发到 `http://127.0.0.1:8080`�
 
 `pnpm build` 生成 `dist/`。在同一 HTTPS 站点上，将静态资源挂载到 Vite 的 `base`，把该前缀下的 `/api` 请求原样转发到后端。实时消息的 `/api/realtime/ws` 需要保留 WebSocket 升级。页面路径及刷新请求回退到该前缀下的 `index.html`。
 
-Vite 的 `contextPath` 与后端 `server.servlet.context-path` 使用同一值。例如 `/apps/orders` 对应 `/apps/orders/` 的页面入口和 `/apps/orders/api/` 的接口前缀。
+Vite 的 `contextPath` 与后端 `application.conf` 的 `app.contextPath` 使用同一值。例如 `/apps/orders` 对应 `/apps/orders/` 的页面入口和 `/apps/orders/api/` 的接口前缀。

@@ -1,36 +1,27 @@
 [versions]
+ktor = "3.6.1"
 kotlin = "2.4.21"
 spring-boot = "4.1.2"
-springdoc = "3.2.0"
-swagger-annotations = "2.2.55"
-graal = "1.1.19"
-mybatis-plus = "3.5.18.1"
 agentscope = "2.0.4"
 minio = "9.0.3"
 aliyun-oss = "3.18.5"
 apache-poi = "6.0.0"
 hutool = "5.8.48"
 jsoup = "1.24.1"
-ip2region = "3.3.7"
 
 [libraries]
+ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
-springdoc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
-swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations-jakarta", version.ref = "swagger-annotations" }
-agentscope-core = { module = "io.agentscope:agentscope-core", version.ref = "agentscope" }
 agentscope-harness = { module = "io.agentscope:agentscope-harness", version.ref = "agentscope" }
-agentscope-openai-spring-boot-starter = { module = "io.agentscope:agentscope-openai-spring-boot-starter", version.ref = "agentscope" }
+agentscope-model-openai = { module = "io.agentscope:agentscope-extensions-model-openai", version.ref = "agentscope" }
 minio = { module = "io.minio:minio", version.ref = "minio" }
 aliyun-oss = { module = "com.aliyun.oss:aliyun-sdk-oss", version.ref = "aliyun-oss" }
 apache-poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "apache-poi" }
 hutool-all = { module = "cn.hutool:hutool-all", version.ref = "hutool" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
-ip2region = { module = "org.lionsoul:ip2region", version.ref = "ip2region" }
 
 [plugins]
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
-kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
-spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
-graal-native = { id = "org.graalvm.buildtools.native", version.ref = "graal" }

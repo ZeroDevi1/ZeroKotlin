@@ -1,3 +1,0 @@
-org.springframework.boot.EnvironmentPostProcessor=dev.zerokotlin.core.config.ZeroCoreDefaults
-org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitializationDetector=\
-dev.zerokotlin.core.config.MybatisDatabaseInitializationDetector

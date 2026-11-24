@@ -4,7 +4,9 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":zero-core"))
+    runtimeOnly("org.xerial:sqlite-jdbc")
+    runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly("com.mysql:mysql-connector-j")
 }
 
 application {

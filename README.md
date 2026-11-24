@@ -1,113 +1,46 @@
-# ZeroKotlin · Ktor
+# ZeroKotlin
 
-`ktor` 分支面向小型全栈项目。初始化生成 Ktor + Netty 后端和原 Vue 3 管理工作台。Ktor 后端接管系统管理、个人中心、文件、实时消息、任务、Excel 和审计等 API，复用系统数据库迁移。Spring Boot 模块留做对照，不是运行 Ktor 的依赖。[Ktor 模板说明](ktor-template/README.md) · [开发指南](ktor-template/docs/development.md) · [合并模板更新](ktor-template/docs/template-upgrades.md)
+ZeroKotlin 是 Ktor + Netty 后端与 Vue 3 管理工作台组成的多模块脚手架。仓库和 `init` 生成项目使用同一套源码、Gradle 配置和模块目录。系统提供账号、组织与数据权限、字典、公告与收件箱、文件、Excel、实时消息、调度和审计。
 
-## 初始化 Ktor 项目
+## 首次启动
 
-准备 Node.js 22.12 或更高版本。从本地工作树初始化时，在新项目的父目录执行：
+准备 JDK 25、Node.js 22.12 或更高版本和 pnpm。使用 vfox 时，可在项目根目录执行 `vfox install java@25+36` 和 `vfox use --project java@25+36`。
 
-```sh
-node "<Ktor 工作树>/scripts/zerokotlin.mjs" init --name order-service --context-url /apps/orders
-```
-
-`--name` 和 `--context-url` 均为必填项。示例会创建 `order-service/`，并把 `/apps/orders` 同步写入 Ktor 和 Vite 配置。可以传入 `/` 或完整 HTTP(S) URL，完整 URL 使用其路径。已存在的同名目录会使初始化退出。
-
-安装 Git 后可通过 `npx` 获取模板。需要固定版本时，将 `#ktor` 换成标签或提交 SHA。
+在项目根目录启动后端。Windows PowerShell 使用 `.\gradlew.bat`。
 
 ```sh
-npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context-url /apps/orders
+./gradlew :zero-system:run
 ```
 
-进入新项目。使用 JDK 25 执行 `./gradlew run`。Windows PowerShell 使用 `.\gradlew.bat run`。另开终端进入项目的 `web/`，执行 `pnpm install --frozen-lockfile` 和 `pnpm dev`。示例的默认前端入口是 `http://127.0.0.1:5173/apps/orders/`，新库使用默认账号 `admin / admin` 登录，请先改密，不对公网开放。
-
-在模板工作树中开发 Ktor 版时，从仓库根目录执行 `./gradlew -p ktor-template run`。Windows PowerShell 使用 `.\gradlew.bat -p ktor-template run`。前端命令在仓库根目录的 `zero-web/` 执行。模板工作树的默认访问前缀为 `/`。[配置和请求示例](ktor-template/docs/development.md)
-
-## Spring Boot 参考工程
-
-原有模块采用 Kotlin 与 Spring Boot，配套 Vue 3 + TypeScript 管理端，提供组织与岗位管理、角色与数据权限、字典、审计、公告和收件箱。下方的 `zero-system` 和 `zero-web` 启动说明适用于 Spring Boot 工程。
-
-### 首次启动
-
-项目使用 JDK 25。已使用 vfox 的开发者可在仓库根目录安装并选定项目版本。首次使用 Java 插件时先执行 `vfox add java`。
-
-```sh
-vfox install java@25+36
-vfox use --project java@25+36
-./gradlew -q :zero-system:javaToolchains
-```
-
-Gradle 会从 `.vfox/sdks/java` 查找本项目的工具链，也支持自动发现已安装的其他 JDK 25。工具链报告应显示 `Language Version: 25` 和 `Is JDK: true`。
-
-macOS 上，若旧版 vfox Java 插件留下空的 `Contents/Home`，Gradle 会在该目录中查找 `bin/java`。确认 `.vfox/sdks/java/bin/javac` 存在后，可执行 `rmdir .vfox/sdks/java/Contents/Home` 移除空目录，再刷新 Gradle 项目。
-
-准备好 JDK 后，在仓库根目录启动后端。空库首次启动的管理员用户名为 `admin`，密码为 `admin`。
-
-```sh
-./gradlew :zero-system:bootRun
-```
-
-在默认开发环境中，可在 [Swagger UI](http://localhost:8080/swagger-ui/index.html) 发送 `POST /api/auth/login`，用返回的 `accessToken` 在 **Authorize** 中授权，再调用 `GET /api/auth/me` 查看当前用户及权限。健康状态位于 [Actuator Health](http://localhost:8080/actuator/health)。
-
-#### 开发与生产配置
-
-Spring Boot 先读取公共配置，再应用所选环境。数据库、缓存、文件存储、可选中间件、安全及审计的完整示例见 [application.yaml](zero-system/resources/application.yaml)。
-
-| 环境 | 启动方式 | 环境差异 |
-| --- | --- | --- |
-| [dev](zero-system/resources/application-dev.yaml) | `./gradlew :zero-system:bootRun` | 默认 SQLite 文件为 `data/zero-kotlin.db`，开放 OpenAPI 和 Swagger UI，登录默认无需验证码。 |
-| [prod](zero-system/resources/application-prod.yaml) | `SPRING_PROFILES_ACTIVE=prod ./gradlew :zero-system:bootRun` | 本地数据库和文件默认保存在 `data/prod/`，开启验证码、审计 IP 脱敏与纯文本清理，关闭 OpenAPI 和 Swagger UI。 |
-
-相对路径从应用工作目录解析。生产部署可用 `ZERO_DATABASE_MODE=postgresql` 和 `ZERO_DATABASE_POSTGRESQL_URL` 等环境变量指定外部数据库。生产部署可在首次启动前用 `ZERO_SYSTEM_ADMIN_USERNAME` 和 `ZERO_SYSTEM_ADMIN_PASSWORD` 指定独立的初始凭据。已有用户的数据库保留原账号、密码和授权。使用临时 SQLite 和随机回环端口的自动化测试可通过 `./gradlew :zero-core:test :zero-system:test` 运行。
-
-### 启动管理端
-
-后端启动后，在另一个终端进入 `zero-web`。使用 Node.js 22.12 或更高版本和 pnpm，在该目录执行以下命令。
+进入 `zero-web/` 启动管理端。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-打开终端显示的地址（默认 [localhost:5173](http://localhost:5173)），使用后端初始化的账号登录。开发服务器将访问前缀下的 `/api` 请求转发至 `http://127.0.0.1:8080`，可通过 `ZERO_WEB_API_TARGET` 调整后端地址。生产部署说明见[管理端文档](zero-web/README.md)。
+默认管理台位于 [127.0.0.1:5173](http://127.0.0.1:5173/)，后端提供[存活探针](http://127.0.0.1:8080/health)、[就绪探针](http://127.0.0.1:8080/actuator/health)和 [Swagger UI](http://127.0.0.1:8080/swagger-ui/)。Flyway 在空用户表中创建 `admin / admin`，首次登录后请改密。已有账号和历史迁移继续使用原数据库记录。
 
-### 工程
+## 初始化项目
 
-工程锁定 Kotlin 2.4.21、Spring Boot 4.1.2 和 Gradle 9.7.0。Kotlin 编译插件与运行库 BOM 共用一个版本号。[Gradle 版本目录](gradle/libs.versions.toml)
+在新项目的父目录运行以下命令。使用 Git 提交 SHA 或标签代替 `#ktor` 可固定模板版本。
+
+```sh
+npx --yes "github:ZeroDevi1/ZeroKotlin#ktor" init --name order-service --context-url /apps/orders
+```
+
+也可用 `node "<ZeroKotlin 工作树>/scripts/zerokotlin.mjs" init --name order-service --context-url /apps/orders` 从本地源码生成。两个参数均必填，目标目录必须可新建。访问前缀可使用 `/`、绝对路径或完整 HTTP(S) URL，完整 URL 取路径部分。
+
+生成后进入 `order-service/`，按[首次启动](#首次启动)运行前后端。`init` 将访问前缀同时写入后端 HOCON 和 Vite 配置。这个示例的管理台访问路径是 `/apps/orders/`。
+
+## 模块与开发入口
 
 | 模块 | 职责 |
 | --- | --- |
-| zero-core | 公共契约、数据源、Flyway、MyBatis-Plus、缓存、Bearer 鉴权框架、OpenAPI 和 Native 资源提示。Gradle feature 控制 JPA、Elasticsearch 和 Kafka 的可选装配。 |
-| zero-system | Spring Boot 启动入口、模块装配，以及账号、组织、权限、公告和审计等系统业务 |
-| [zero-codegen](docs/codegen.md) | 从业务表结构生成 Kotlin CRUD 和 MyBatis XML 的开发命令行工具 |
-| [zero-agent](zero-agent/README.md) | AgentScope Java v2 示例库。演示新模块如何依赖 `zero-core`，以及如何通过 `-PwithAgent=true` 加入启动包。 |
-| zero-web | Vue 3 + TypeScript 管理端，使用 Vite 开发与打包 |
+| `zero-core` | JDBC 数据源、文件存储、验证码与安全状态、Excel、Kafka 等通用基础设施。 |
+| `zero-system` | Ktor 启动入口、系统业务与路由、数据库迁移。入口配置在 [application.conf](zero-system/resources/application.conf)。 |
+| `zero-codegen` | 从 SQLite、PostgreSQL 或 MySQL 表生成 Ktor JDBC CRUD 路由。 |
+| `zero-agent` | 可选 AgentScope 开发模块，使用 `-PwithAgent=true` 加入后端运行包。 |
+| `zero-web` | Vue 3 + TypeScript 管理工作台。 |
 
-后端按职责组织 Kotlin 包。系统模块的 [controller](zero-system/src/dev/zerokotlin/system/controller) 接收 HTTP 请求，[service](zero-system/src/dev/zerokotlin/system/service) 处理业务和事务，[mapper](zero-system/src/dev/zerokotlin/system/mapper) 与 [entity](zero-system/src/dev/zerokotlin/system/entity) 负责持久化。接口模型在 `dto`，Spring 配置在 `config`。新增功能沿用这些目录。后端模块的 Kotlin 源码根都是 `src/`，包 `dev.zerokotlin.core` 对应 `zero-core/src/dev/zerokotlin/core/`。配置、Mapper XML 和 Flyway SQL 放在模块的 `resources/`。
-
-从独立启动模块升级时，若已有 SQLite 文件位于旧启动目录，可用 `ZERO_DATABASE_SQLITE_PATH` 指定该文件的绝对路径，继续使用原有账号和业务数据。
-
-### 配置与二次开发
-
-| 场景 | 入口 |
-| --- | --- |
-| 选择数据库、配置 Redis、添加 MyBatis 或 JPA 访问层 | [数据源、迁移与缓存](docs/data.md) |
-| 学习 Kotlin 函数、集合操作、类型选择和 KDoc | [Kotlin 后端开发手册](docs/kotlin-development.md) |
-| 创建只依赖 `zero-core` 的业务模块，接入权限、迁移和 Vue 页面 | [新建业务模块](docs/new-module.md) |
-| 用 Swagger UI 调试接口、获取 OpenAPI JSON 或 YAML、为新接口添加说明 | [Swagger UI 与 OpenAPI](docs/openapi.md) |
-| 上传、检索、下载和删除本地或对象存储中的文件 | [文件管理](docs/files.md) |
-| 发送群发消息、私信及查看在线人数 | [实时消息](docs/realtime.md) |
-| 下载模板、导入或导出用户、字典和字典项 | [Excel 操作](docs/excel.md) |
-| 配置验证码、按 IP 或用户限流、输入清理与字段脱敏 | [安全控制](docs/security-controls.md) |
-| 配置任务计划、立即执行和查看运行日志 | [Quartz 任务调度](docs/jobs.md) |
-| 维护本人资料、改密、直接勾选角色菜单和批量管理资源 | [账号与菜单管理](docs/accounts.md) |
-| 查看服务与 Redis 指标、配置离线 IP 归属地与请求审计 | [运行监控](docs/operations.md) |
-| 调用登录、角色、部门、行级权限和审计接口 | [系统 API 和权限表](docs/system.md) |
-| 管理岗位和成员、发布或撤回公告、读取个人收件箱 | [岗位、公告和收件箱 API](docs/organization-notices.md) |
-| 添加可卸载模块、启用搜索或收发 Kafka 消息 | [扩展指南与请求示例](docs/extensions.md) |
-| 用 GraalVM 25 构建 SQLite 与 Caffeine 的最小原生应用 | [Native 构建配置与待验证范围](docs/native.md) |
-
-数据库自动模式只探测已配置的 PostgreSQL、MySQL 地址，均不可达时使用 SQLite。缓存自动模式优先使用已配置且可达的 Redis。数据源与缓存后端在本次进程内固定，切换数据库只改变读写目标，各库独立保存数据。
-
-Web、JPA、健康端点和 Swagger UI 的通用默认值位于 `zero-core/resources/zero-core-defaults.properties`。部署时可通过应用配置、环境变量或命令行参数覆盖。
-
-工程划分参考 JeecgBoot 将共享基础设施集中到 `jeecg-boot-base-core` 的做法。组织与权限模型参考 JeecgBoot，Kotlin 模块划分参考 zeta-kotlin。文件管理、Excel、实时消息、调度和运维能力参考其多模块版本。[JeecgBoot](https://github.com/jeecgboot/JeecgBoot/tree/main/jeecg-boot/jeecg-boot-base-core) · [zeta-kotlin](https://github.com/xia5800/zeta-kotlin) · [springboot-kotlin-module](https://github.com/xia5800/springboot-kotlin-module/tree/e5e0cc7c2b8a070689560389786228c944bd25a4)
+后端模块沿用 `src/`、`resources/` 和 `test/` 布局。配置、部署和迁移边界见 [Ktor 开发指南](docs/development.md)。业务模块可参考 [CRUD 生成器](docs/codegen.md)和[开发入口](docs/new-module.md)。[Kotlin 后端开发手册](docs/kotlin-development.md)提供工程内的代码示例。已有项目升级见[合并模板更新](docs/template-upgrades.md)。

@@ -1,42 +1,14 @@
 # zero-agent
 
-`zero-agent` 是 ZeroKotlin 的可选 Kotlin 库，目前只包含构建配置和源码包占位。模块依赖 `zero-core`，并通过版本目录引入 AgentScope Java 2.0.4 的 `agentscope-harness` 和 `agentscope-openai-spring-boot-starter`。[模块构建配置](build.gradle.kts) · [Gradle 版本目录](../gradle/libs.versions.toml) · [AgentScope Java 2.0 介绍](https://java.agentscope.io/v2/zh/intro) · [官方快速开始](https://java.agentscope.io/v2/zh/docs/quickstart)
+`zero-agent` 是可选的 AgentScope Java 扩展模块。它依赖 `zero-core`，使用 AgentScope Harness 和独立的 OpenAI 模型扩展。业务可在本模块的 `src/` 中创建服务，通过构造参数显式传递模型与运行配置。
 
 ## 按需装配
 
-在仓库根目录执行。`withAgent` 默认关闭，显式传 `-PwithAgent=false` 效果相同。[首次启动](../README.md#首次启动)
+在项目根目录启动 Ktor，或生成运行分发包。
 
 ```sh
-./gradlew :zero-system:bootRun
+./gradlew :zero-system:run -PwithAgent=true
+./gradlew :zero-system:installDist -PwithAgent=true
 ```
 
-启用时，`zero-system` 通过 `runtimeOnly` 装入库及其运行时依赖。当前模块只有占位源码，启用后无需 AgentScope 凭证。[启动项目的依赖声明](../zero-system/build.gradle.kts)
-
-```sh
-./gradlew :zero-system:bootRun -PwithAgent=true
-```
-
-打包 JVM 应用时使用同一个属性。
-
-```sh
-./gradlew :zero-system:bootJar -PwithAgent=true
-```
-
-用下列两条命令可比较 `runtimeClasspath`。预期第二份报告会额外列出 `project :zero-agent` 及其 AgentScope 依赖。
-
-```sh
-./gradlew :zero-system:dependencies --configuration runtimeClasspath
-./gradlew :zero-system:dependencies --configuration runtimeClasspath -PwithAgent=true
-```
-
-## 添加功能
-
-1. 在 `src/dev/zerokotlin/agent/service/` 按实际用例编写业务服务，将 AgentScope 调用放在服务层。模块沿用根构建的 JDK 25、`src/` 源码根和 `resources/` 资源根。[源码占位](src/dev/zerokotlin/agent/service/AgentService.kt) · [根构建配置](../build.gradle.kts)
-2. 用例需要 Spring 装配时，在 `src/dev/zerokotlin/agent/config/` 添加配置。需要 HTTP 接口时，在 `src/dev/zerokotlin/agent/` 下创建 `controller/` 和 `dto/`。装入运行时类路径后，`zero-system` 从 `dev.zerokotlin` 扫描组件。[应用入口](../zero-system/src/dev/zerokotlin/ZeroKotlinApplication.kt)
-
-## 复用为新模块
-
-1. 在仓库根目录创建 `zero-<名称>/`，参考本模块的 `build.gradle.kts` 保留 Kotlin 插件和 `implementation(project(":zero-core"))`。外部库按业务需求在版本目录声明，由新模块按需引用。
-2. 在 `settings.gradle.kts` 的 `include(...)` 注册新模块，例如 `"zero-orders"`。[项目清单](../settings.gradle.kts)
-3. 在 `zero-system/build.gradle.kts` 的 `dependencies` 块中装配新模块，例如 `runtimeOnly(project(":zero-orders"))`。需要默认关闭时，用 `if (enabled("withOrders"))` 包住该依赖。[启动项目的依赖声明](../zero-system/build.gradle.kts)
-4. 在 `zero-<名称>/src/dev/zerokotlin/<包名>/` 下按职责创建源码包。[新建业务模块](../docs/new-module.md)
+`withAgent` 默认关闭。启用时，`zero-agent` 及其依赖进入 `zero-system` 的运行时类路径。当前模块只有服务占位，接入实际业务时在 Ktor 应用显式装配所需服务。

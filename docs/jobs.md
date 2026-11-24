@@ -35,10 +35,10 @@
 
 ## 持久化与执行
 
-`V6__scheduled_jobs.sql` 使用 SQLite、PostgreSQL 和 MySQL 共用的 Flyway 目录。任务、下一次待派发时间和手动队列保存在项目数据库，Redis 可缺省。应用启动后，Quartz 每秒读取待执行项，并为它们注册一次性触发器。重启补跑每个自动计划中已持久化的下一次到期项，然后跳到执行结束后的下一计划时刻。停机期间其余错过的时间点会跳过。未消费的手动请求会继续执行。
+`V6__scheduled_jobs.sql` 使用 SQLite、PostgreSQL 和 MySQL 共用的 Flyway 目录。任务、下一次待派发时间和手动队列保存在项目数据库，Redis 可缺省。应用启动后，Ktor 后台协程每秒轮询待执行项，Quartz 用于计算计划时刻。重启补跑每个自动计划中已持久化的下一次到期项，然后跳到执行结束后的下一计划时刻。停机期间其余错过的时间点会跳过。未消费的手动请求会继续执行。
 
-系统写入锁串行化任务变更和消费操作。管理审计的动作是 `job.create`、`job.update`、`job.delete`、`job.pause`、`job.resume` 和 `job.run`。执行日志状态为 `QUEUED`、`SUCCESS`、`FAILED` 或 `CANCELLED`。任务执行失败时，通过保存点回滚任务效果，再记录失败。若整个事务提交失败，后续调度重新消费原工作项。只有能随同一 JDBC 事务回滚的短时操作才适合加入本地允许名单。
+系统写入锁串行化任务变更和消费操作。管理审计的动作是 `job.create`、`job.update`、`job.delete`、`job.pause`、`job.resume` 和 `job.run`。执行日志状态为 `QUEUED`、`SUCCESS`、`FAILED` 或 `CANCELLED`。工作项在数据库事务中执行并写入结果。事务失败会回滚本轮变更，后续调度可重新消费原工作项。只有能随同一 JDBC 事务回滚的短时操作才适合加入本地允许名单。
 
-Quartz 使用各进程内的 RAMJobStore，数据库中的写入锁和游标防止重复消费。日内计划使用部署进程的 JVM 默认时区，因此使用同一数据库的进程须使用相同时区配置。当前调度采用固定的一秒回填周期和每进程一个工作作业，手动触发与自动触发共享执行容量。
+数据库中的写入锁和游标防止重复消费。日内计划使用部署进程的 JVM 默认时区，因此使用同一数据库的进程须使用相同时区配置。当前调度采用每轮结束后等待一秒，每进程一个后台协程，手动触发与自动触发共享执行容量。
 
 触发器类型参考 [上游调度类型](https://github.com/xia5800/springboot-kotlin-module/blob/e5e0cc7/zeta-model/zeta-model-quartz/src/main/kotlin/com/zeta/model/quartz/enums/ScheduleTypeEnum.kt)。日内触发行为参考 [Quartz 日内触发器源码](https://github.com/quartz-scheduler/quartz/blob/v2.5.2/quartz/src/main/java/org/quartz/impl/triggers/DailyTimeIntervalTriggerImpl.java)。

@@ -1,18 +1,10 @@
 # 系统模块
 
-`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。它复用 `zero-core` 的数据源、MyBatis-Plus 和 Bearer 过滤链，并通过 `BearerSessionAuthentication` 提供持久化会话查询和权限计算。Flyway 从 `classpath:db/migration/common` 按版本顺序执行系统迁移。MyBatis-Plus 扫描 `classpath*:/mapper/**/*.xml`，实体按驼峰属性映射下划线列名。
+`zero-system` 提供账号、角色、权限点、菜单、部门、字典和审计 API。Ktor 处理路由，JDBC 查询持久化会话和权限。Flyway 从 `classpath:db/migration/common` 按版本顺序执行系统迁移。
 
 ## 首次启动
 
-空用户库默认创建 `admin`，登录密码为 `admin`，并关联内置角色 `system-admin`。使用默认编码器时，V9 SQL 写入 BCrypt 哈希。可以在首次启动前用下列环境变量覆盖初始凭据。[管理员初始化 SQL](../zero-system/resources/db/migration/common/V9__initial_administrator.sql)
-
-| 环境变量 | Spring 属性 | 用途 |
-| --- | --- | --- |
-| `ZERO_SYSTEM_ADMIN_USERNAME` | `zero.system.admin.username` | 首次管理员用户名，默认 `admin`。3–64 个 ASCII 字符，以字母或数字开头，后续也可使用点、下划线和连字符。保存为小写。 |
-| `ZERO_SYSTEM_ADMIN_PASSWORD` | `zero.system.admin.password` | 默认账号密码为 `admin`。自定义初始密码至少 12 个 Unicode 码点，最多 72 个 UTF-8 字节。 |
-| `ZERO_SYSTEM_SESSION_SECONDS` | `zero.system.session.seconds` | 登录令牌有效期，默认 28800 秒，允许 1–604800 秒。 |
-
-设置自定义凭据时，启动初始化器会使用部署配置的密码编码器创建该账号。初始化后可移除这两个变量。已有用户的数据库保留原密码和角色关联；用户可在个人中心修改密码。
+空用户库由 V9 创建 `admin / admin`，授予内置角色 `system-admin`。已有账号和角色保持原样。`ZERO_SYSTEM_SESSION_SECONDS` 默认 28800 秒，允许 1–604800 秒。[管理员初始化 SQL](../zero-system/resources/db/migration/common/V9__initial_administrator.sql)
 
 ## 登录和会话
 
@@ -22,7 +14,7 @@
 {"username":"admin","password":"admin"}
 ```
 
-登录成功返回 `accessToken`、`tokenType`（`Bearer`）和 `expiresAt`（Unix 毫秒）。将 `Authorization: Bearer <accessToken>` 加入后续请求。默认由 `zero-core` 提供工作因子为 12 的 BCrypt 编码器。账户创建、首次初始化和修改密码只写入非空哈希。数据库同时保存会话的 SHA-256 摘要。退出删除当前会话摘要。停用或删除账号、修改或重置密码会注销该用户的所有会话。重新启用账号后需重新登录。角色、权限点、账号和令牌状态在每次请求认证时读取数据库，变更提交后下一次请求立即生效。
+登录成功返回 `accessToken`、`tokenType`（`Bearer`）和 `expiresAt`（Unix 毫秒）。将 `Authorization: Bearer <accessToken>` 加入后续请求。系统使用工作因子为 12 的 BCrypt 编码器。账户创建、首次初始化和修改密码只写入非空哈希。数据库同时保存会话的 SHA-256 摘要。退出删除当前会话摘要。停用或删除账号、修改或重置密码会注销该用户的所有会话。重新启用账号后需重新登录。角色、权限点、账号和令牌状态在每次请求认证时读取数据库，变更提交后下一次请求立即生效。
 
 | 方法和路径 | 结果 |
 | --- | --- |
@@ -32,9 +24,9 @@
 | `GET /api/auth/me` | 需要登录。返回 `id`、`username`、`displayName`、`departmentId`、`administrator` 和 `permissions`。 |
 | `GET /api/auth/me/menus` | 需要登录。返回当前用户可见的菜单树。 |
 
-`GET /actuator/health`、`/v3/api-docs` 及 Swagger UI 的 GET 请求可匿名访问。启用存活和就绪探针时，其 GET 端点也可匿名访问。其他端点要求 Bearer 认证。
+`GET /actuator/health`、`/v3/api-docs` 及 Swagger UI 的 GET 请求可匿名访问。`GET /health` 同样可匿名访问。其他端点要求 Bearer 认证。
 
-启用登录验证码后，请在登录请求中附带挑战 ID 和图片中的字符。登录审计响应也可启用地址脱敏。[安全控制](security-controls.md)
+启用登录验证码后，请在登录请求中附带挑战 ID 和图片中的字符。[安全控制](security-controls.md)
 
 ## 权限与行级范围
 
@@ -49,7 +41,7 @@
 | `DEPARTMENT_AND_DESCENDANTS` | 登录用户所在部门和所有下级部门的成员 |
 | `ALL` | 全部用户 |
 
-用户详情或更新的目标超出范围时返回 404。分页的部门和角色筛选与行级范围同时生效。部门筛选只匹配所指定部门，角色筛选匹配实际关联（含已停用角色）。XML 用 `EXISTS` 筛选用户，再按本页用户 ID 批量取回全部关联角色。列表项的 `user` 是用户摘要，`roles` 包含角色 ID、编码及名称。
+用户详情或更新的目标超出范围时返回 404。分页的部门和角色筛选与行级范围同时生效。部门筛选只匹配所指定部门，角色筛选匹配实际关联（含已停用角色）。JDBC 查询用 `EXISTS` 筛选用户，再按本页用户 ID 批量取回全部关联角色。列表项的 `user` 是用户摘要，`roles` 包含角色 ID、编码及名称。
 
 ## 管理 API
 
@@ -57,7 +49,7 @@
 
 本人资料、改密、批量字典选项、删除和角色菜单的接口见[个人中心、批量管理和角色菜单](accounts.md)。
 
-以下路径均以 `/api/system` 为前缀。权限列列出完整的 Spring Security authority。分页使用 `page=1&size=20`，`size` 可为 1–100。响应为 `{items,total,page,size}`。
+以下路径均以 `/api/system` 为前缀。权限列列出完整的权限编码。分页使用 `page=1&size=20`，`size` 可为 1–100。响应为 `{items,total,page,size}`。
 
 | 方法和路径 | 权限 | 请求和响应 |
 | --- | --- | --- |
@@ -86,13 +78,13 @@
 | `GET /audits/logins` | `system:audit:read` | 登录审计分页，可按 `successful` 筛选。 |
 | `GET /audits/operations` | `system:audit:read` | 操作审计分页，可按 `actorId`、`action` 筛选。 |
 
-账号、角色、权限点、菜单和字典通过 `enabled` 停用。部门与菜单可以移动到已有父节点或移动到根层级。树结构拒绝循环。菜单的 `path` 为站内路径，也可省略以表示分组。`/api/auth/me/menus` 按节点启用状态、模块、所需权限与祖先可见性筛选。启用直接分配时还应用角色菜单配置。业务 API 的访问由 Spring Security 校验。
+账号、角色、权限点、菜单和字典通过 `enabled` 停用。部门与菜单可以移动到已有父节点或移动到根层级。树结构拒绝循环。菜单的 `path` 为站内路径，也可省略以表示分组。`/api/auth/me/menus` 按节点启用状态、模块、所需权限与祖先可见性筛选。启用直接分配时还应用角色菜单配置。业务 API 的访问由系统路由和 JDBC 查询校验。
 
 认证服务记录成功和失败的登录尝试，包括用户 ID（能识别时）、用户名、结果、请求来源地址和发生时间。审计记录使用 Unix 毫秒。成功的系统管理写入和退出会在同一事务中登记操作审计，包含操作者 ID、操作类型和目标 ID。
 
 ## 业务模块注册
 
-可选模块声明 `ModuleMigration("orders")` Bean，并在 `resources/db/modules/orders/V1__orders.sql` 中提供迁移。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
+在模块资源目录的 `db/modules/orders/V1__orders.sql` 中提供迁移，并设置 `ZERO_BUSINESS_MODULES=orders`。核心迁移成功后，各模块按自己的版本序列执行。先注册权限，再注册引用它的菜单。
 
 ```sql
 INSERT INTO sys_permission (code, name)
@@ -108,4 +100,4 @@ VALUES ('orders-list', 'orders', '订单列表', '/orders', 'orders:order:read',
 | `sys_menu` | `id` 为字符串主键，最长 36 字符。必填 `name`。可空 `module_name` 对应可选模块名称，模块移除后导航自动隐藏其菜单。可空 `parent_id`、`path`、`permission_code`，分别关联父菜单、站内路径和权限点。`sort_order` 默认 0，`enabled` 默认 1。 |
 | `sys_role_permission` | 复合主键 `(role_id, permission_code)`，关联已有角色、权限点。业务角色的授予关系也可通过系统 API 配置。 |
 
-服务方法使用 `@PreAuthorize("hasAuthority('orders:order:read')")` 鉴权，注入 `dev.zerokotlin.core.CurrentActor` 并调用 `requireUserId()` 获取登录用户。业务模块按自己的实体所有权和组织关系约束查询。在业务模块的 `@Transactional` 写方法中调用 `dev.zerokotlin.core.OperationAudit.record(permission, targetId)`，系统会在当前事务内复核权限并记录操作。业务写入失败时审计一同回滚。
+在路由中校验 Bearer 会话与权限。业务查询自行约束行级范围，写入和审计可由 `SystemStore.write` 在同一 JDBC 事务内提交。详见[业务开发入口](new-module.md)。
